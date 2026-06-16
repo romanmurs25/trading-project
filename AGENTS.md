@@ -12,7 +12,7 @@
 - `apps/cli` — Typer CLI.
 - `packages/trading_core` — доменное ядро, стратегии, риск, execution, backtest.
 - `packages/adapters` — внешние адаптеры и paper broker.
-- `packages/storage` — будущий слой хранения.
+- `packages/storage` — SQLAlchemy models, Alembic migrations и repository foundation.
 - `tests` — unit и integration тесты без реальных credentials.
 - `docs` — архитектура, режимы торговли, риск и будущая миграция.
 
@@ -25,11 +25,12 @@ mypy .
 uvicorn apps.api.main:app --reload
 trading config show-safe
 trading backtest run-synthetic
+trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
 trading db check-config
 ```
 
-SQLAlchemy models уже описаны. Alembic-миграции будут добавлены в следующих циклах. До появления
-Alembic-команд не имитируй рабочие миграции.
+SQLAlchemy models, Alembic initial migration и sync `SQLAlchemyStorage` уже добавлены. Repository-тесты
+используют SQLite in-memory; production PostgreSQL schema должна оставаться совместимой.
 
 ## Доменные правила
 
@@ -43,11 +44,15 @@ Alembic-команд не имитируй рабочие миграции.
 - Live trading выключен по умолчанию.
 - `RiskEngine` обязателен перед исполнением.
 - `ExecutionEngine` не должен обходить `RiskEngine`.
+- `ExecutionEngine` должен менять состояния ордеров только через `OrderStateMachine`.
+- Каждый переход состояния ордера audit-логируется как `order_state_transition`.
 - Все действия с ордерами должны иметь idempotency key.
 - Все действия с ордерами должны audit-логироваться.
 - Деньги, цены, количество, риск, комиссии и PnL — только `Decimal`.
 - Никогда не логируй токены, ключи, секреты и authorization headers.
 - Внешние API должны быть за портами и адаптерами.
+- MOEX ISS adapter остаётся read-only: historical candles only, без execution methods.
+- MOEX backfill CLI/API не делает внешний запрос без `--allow-network` / `allow_network=true`.
 - Kafka и Java не используются в MVP.
 - Kubernetes не используется в MVP.
 - Тесты не требуют реальных credentials и не отправляют live-ордера.

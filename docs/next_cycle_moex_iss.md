@@ -1,19 +1,19 @@
-# Следующий цикл: MOEX ISS read-only historical candles
+# Cycle 3 status: MOEX ISS read-only historical candles
 
-Цель следующего цикла — добавить безопасную read-only загрузку исторических свечей MOEX ISS и сохранить
-результат в storage. Live trading в этом цикле не появляется.
+Цель цикла — добавить безопасную read-only загрузку исторических свечей MOEX ISS и сохранить результат в
+storage foundation. Live trading в этом цикле не появляется.
 
-## План
+## Реализовано
 
-1. Реализовать `MoexIssClient` поверх `httpx.AsyncClient`.
-2. Добавить mapper payload → `Candle`.
-3. Реализовать pagination по ISS history/candles endpoint.
-4. Добавить retry/backoff и простой rate limit.
-5. Написать mocked HTTP tests без реальных сетевых вызовов.
-6. Добавить CLI:
-   `trading data backfill-moex --symbol <symbol> --interval 1m --from YYYY-MM-DD --to YYYY-MM-DD`.
-7. Сохранять свечи через `StoragePort`: сначала `InMemoryStorage`, затем SQLAlchemy repository.
-8. Добавить API endpoint для backfill trigger только в read-only режиме.
+1. `MoexIssClient` поверх `httpx.AsyncClient`.
+2. Mapper payload → `Candle` с `Decimal` и UTC conversion.
+3. Pagination по ISS candles endpoint через `start`.
+4. Retry/backoff и простой rate limit.
+5. Mocked HTTP tests без реальных сетевых вызовов.
+6. CLI:
+   `trading data backfill-moex --symbol <symbol> --instrument-id <id> --interval 1m --from YYYY-MM-DD --to YYYY-MM-DD`.
+7. Сохранение свечей через `StoragePort`: `InMemoryStorage` и `SQLAlchemyStorage`.
+8. API endpoint для safe backfill trigger.
 
 ## Safety constraints
 
@@ -21,3 +21,11 @@
 - Никаких broker credentials.
 - Никаких внешних HTTP-вызовов в тестах.
 - Все цены и объёмы остаются `Decimal`.
+
+## Осталось
+
+- Production-grade MOEX trading calendar.
+- Order book и last trade read-only endpoints.
+- Realtime stream.
+- Futures roll/expiry contract model.
+- PostgreSQL integration tests поверх docker compose или testcontainers.

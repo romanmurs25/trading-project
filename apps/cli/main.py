@@ -1,13 +1,19 @@
+import asyncio
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from typing import Literal
 
 import typer
+from adapters.moex_iss.market_data_adapter import MoexIssMarketDataAdapter
 from adapters.paper.broker import PaperBroker
+from storage.in_memory import InMemoryStorage
+from storage.sqlalchemy_repositories import SQLAlchemyStorage
 from trading_core.backtest.engine import BacktestEngine
 from trading_core.config import AppConfig
 from trading_core.domain.enums import AssetClass, Venue
 from trading_core.domain.models import Candle, Instrument, RiskConfig
+from trading_core.ports.storage import StoragePort
 from trading_core.risk.engine import RiskEngine
 from trading_core.risk.kill_switch import KillSwitch
 from trading_core.strategy.opening_range_breakout import OpeningRangeBreakoutStrategy
@@ -17,6 +23,7 @@ config_app = typer.Typer(help="Конфигурация")
 risk_app = typer.Typer(help="Risk controls")
 backtest_app = typer.Typer(help="Backtesting")
 db_app = typer.Typer(help="Database helpers")
+data_app = typer.Typer(help="Market data helpers")
 
 _kill_switch = KillSwitch(AppConfig().risk)
 
@@ -78,8 +85,68 @@ def db_check_config() -> None:
 @db_app.command("init-placeholder")
 def db_init_placeholder() -> None:
     typer.echo(
-        "SQLAlchemy models are defined in packages/storage/sqlalchemy_models.py; "
-        "Alembic migration will be added in the next storage cycle."
+        "SQLAlchemy models and Alembic initial migration are available. "
+        "Use `alembic upgrade head` for real DB migration. "
+        "Repository tests use SQLite in-memory."
+    )
+
+
+@data_app.command("backfill-moex")
+def backfill_moex(
+    symbol: str = typer.Option(..., "--symbol"),
+    instrument_id: str = typer.Option(..., "--instrument-id"),
+    interval: str = typer.Option("1m", "--interval"),
+    from_date: str = typer.Option(..., "--from"),
+    to_date: str = typer.Option(..., "--to"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    dry_run: bool = typer.Option(True, "--dry-run/--write"),
+    allow_network: bool = typer.Option(False, "--allow-network"),
+) -> None:
+    start = _parse_cli_date(from_date)
+    end = _parse_cli_date(to_date)
+    warnings: list[str] = []
+    candles_loaded = 0
+    candles_saved = 0
+
+    if not allow_network:
+        warnings.append("external network is disabled by default; pass --allow-network explicitly")
+        _echo_backfill_result(
+            symbol,
+            interval,
+            start,
+            end,
+            candles_loaded,
+            candles_saved,
+            storage,
+            dry_run,
+            allow_network,
+            warnings,
+        )
+        return
+
+    instrument = _moex_instrument(symbol, instrument_id)
+    adapter = MoexIssMarketDataAdapter()
+    candles = asyncio.run(adapter.get_historical_candles(instrument, interval, start, end))
+    candles_loaded = len(candles)
+    if not dry_run:
+        target_storage: StoragePort
+        if storage == "in-memory":
+            target_storage = InMemoryStorage()
+        else:
+            target_storage = SQLAlchemyStorage.from_url(AppConfig().database_url)
+        target_storage.save_candles(candles)
+        candles_saved = len(candles)
+    _echo_backfill_result(
+        symbol,
+        interval,
+        start,
+        end,
+        candles_loaded,
+        candles_saved,
+        storage,
+        dry_run,
+        allow_network,
+        warnings,
     )
 
 
@@ -118,10 +185,62 @@ def _synthetic_candles(instrument_id: str) -> list[Candle]:
     ]
 
 
+def _moex_instrument(symbol: str, instrument_id: str) -> Instrument:
+    return Instrument(
+        id=instrument_id,
+        venue=Venue.MOEX,
+        asset_class=AssetClass.FUTURES,
+        native_symbol=symbol,
+        canonical_symbol=f"MOEX:{symbol}",
+        name=symbol,
+        lot_size=Decimal("1"),
+        tick_size=Decimal("1"),
+        tick_value=Decimal("1"),
+        currency="RUB",
+    )
+
+
+def _parse_cli_date(value: str) -> datetime:
+    return datetime.combine(date.fromisoformat(value), time.min, tzinfo=UTC)
+
+
+def _echo_backfill_result(
+    symbol: str,
+    interval: str,
+    start: datetime,
+    end: datetime,
+    candles_loaded: int,
+    candles_saved: int,
+    storage: str,
+    dry_run: bool,
+    allow_network: bool,
+    warnings: list[str],
+) -> None:
+    typer.echo(
+        json.dumps(
+            {
+                "symbol": symbol,
+                "interval": interval,
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+                "candles_loaded": candles_loaded,
+                "candles_saved": candles_saved,
+                "storage": storage,
+                "dry_run": dry_run,
+                "allow_network": allow_network,
+                "warnings": warnings,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
 app.add_typer(config_app, name="config")
 app.add_typer(risk_app, name="risk")
 app.add_typer(backtest_app, name="backtest")
 app.add_typer(db_app, name="db")
+app.add_typer(data_app, name="data")
 
 
 if __name__ == "__main__":

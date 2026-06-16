@@ -14,7 +14,7 @@ class MarketDataPort(Protocol):
         end: datetime,
     ) -> list[Candle]: ...
 
-    async def stream_candles(
+    def stream_candles(
         self,
         instruments: Sequence[Instrument],
         interval: str,

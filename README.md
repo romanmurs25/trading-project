@@ -70,6 +70,7 @@ trading config show-safe
 trading risk status
 trading risk kill
 trading backtest run-synthetic
+trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
 trading db check-config
 trading db init-placeholder
 ```
@@ -94,7 +95,7 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 ## Адаптеры
 
 - `adapters.paper`: рабочий MVP broker simulator.
-- `adapters.moex_iss`: безопасный read-only skeleton без реальных тестовых HTTP-вызовов.
+- `adapters.moex_iss`: безопасный read-only adapter для исторических свечей MOEX ISS; тесты используют mocks.
 - `adapters.tinvest`: skeleton с запретом live-исполнения.
 - `adapters.bybit`: skeleton для read-only/testnet-first подхода; Bybit TradFi не реализуется.
 
@@ -118,6 +119,15 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 - Backtest теперь поддерживает stop-loss, take-profit, forced close и расширенные метрики.
 - Добавлен SQLAlchemy model foundation и [docs/storage_plan.md](docs/storage_plan.md).
 
+## Что добавлено в Cycle 3
+
+- `ExecutionEngine` валидирует переходы ордеров через `OrderStateMachine` и audit-логирует transitions.
+- `PaperBroker` ведёт closed trades с entry/exit commission, partial close и reversal accounting.
+- Реализован read-only MOEX ISS historical candles adapter с retry/backoff, pagination и UTC mapping.
+- Добавлен safe CLI/API backfill: без `--allow-network` / `allow_network=true` внешняя сеть не используется.
+- Добавлены Alembic initial migration и sync `SQLAlchemyStorage` для базового persistence.
+- Добавлен GitHub Actions CI для `ruff check .`, `mypy .`, `pytest`.
+
 ## Что не коммитить
 
 - Виртуальные окружения: `.venv/`, локальные venv в корне проекта.
@@ -128,15 +138,22 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 
 ## GitHub workflow
 
-- `main` не трогаем напрямую.
+- `main` защищаем и не трогаем напрямую.
 - Codex работает только в ветках `codex/*`.
-- Каждая задача оформляется отдельным pull request.
+- Каждый цикл или отдельная задача оформляется отдельным pull request.
 - В PR нужно указывать:
   - `summary`: что изменилось;
   - `tests`: какие проверки запускались;
-  - `known limitations`: что осталось ограничением или заглушкой.
+  - `known limitations`: что осталось ограничением или заглушкой;
+  - `next step`: рекомендуемый следующий шаг.
 - Перед PR нужно убедиться, что `pytest`, `ruff check .` и `mypy .` проходят.
 - Локальные артефакты, `.env` и credentials не должны попадать в commit.
+
+Пример ветки:
+
+```bash
+git switch -c codex/cycle-03-moex-iss-storage
+```
 
 ## Backtest limitations
 

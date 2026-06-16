@@ -35,6 +35,15 @@ mypy .
 Перед PR все три команды должны проходить. Если команда не запускается из-за отсутствующих зависимостей,
 сначала установи dev-зависимости в локальное окружение.
 
+GitHub Actions запускает те же проверки на Python 3.12:
+
+```bash
+python -m pip install -e ".[dev]"
+ruff check .
+mypy .
+pytest
+```
+
 ## Запуск API
 
 ```bash
@@ -55,14 +64,59 @@ trading backtest run-synthetic
 
 Команда должна работать без broker credentials, внешних API и live trading.
 
+## Safe config
+
+```bash
+trading config show-safe
+```
+
+Команда печатает redacted-конфигурацию. `.env` не коммитится, `.env.example` остаётся безопасным шаблоном.
+
+## MOEX ISS dry-run backfill
+
+По умолчанию команда не делает внешних HTTP-запросов:
+
+```bash
+trading data backfill-moex \
+  --symbol SiH6 \
+  --instrument-id moex-si \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02
+```
+
+Для реального read-only запроса нужен явный флаг:
+
+```bash
+trading data backfill-moex \
+  --symbol SiH6 \
+  --instrument-id moex-si \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02 \
+  --allow-network
+```
+
+Сохранение требует явного `--write`; иначе команда остаётся dry-run.
+
+## Alembic
+
+Initial migration лежит в `packages/storage/migrations`. Для локального PostgreSQL из docker compose:
+
+```bash
+alembic upgrade head
+```
+
+Repository-слой в этом цикле sync SQLAlchemy. Default `DATABASE_URL` использует `postgresql+psycopg`.
+
 ## Ветки
 
-- Не работаем напрямую в `main`.
+- `main` защищаем и не работаем напрямую в нём.
 - Для каждой задачи создаём отдельную ветку с префиксом `codex/`.
 - Пример:
 
 ```bash
-git switch -c codex/moex-iss-readonly-backfill
+git switch -c codex/cycle-03-moex-iss-storage
 ```
 
 Название ветки должно коротко описывать одну задачу. Не смешивай несколько независимых изменений в одной
@@ -84,6 +138,9 @@ git switch -c codex/moex-iss-readonly-backfill
 ## Known limitations
 - Что осталось заглушкой.
 - Какие ограничения сохранены осознанно.
+
+## Next step
+- Что рекомендуется делать следующим циклом.
 ```
 
 ## Что не добавлять в git
