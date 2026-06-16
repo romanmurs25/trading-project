@@ -64,6 +64,21 @@ trading backtest run-synthetic
 
 Команда должна работать без broker credentials, внешних API и live trading.
 
+## DB-backed backtest
+
+После сохранения instruments и candles в storage можно запускать бэктест по canonical symbol:
+
+```bash
+trading backtest run-db \
+  --strategy opening_range_breakout \
+  --canonical-symbol MOEX:SiH6 \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02
+```
+
+Команда использует `PaperBroker` и PAPER-копию инструмента. Live venue не используется для исполнения.
+
 ## Safe config
 
 ```bash
@@ -73,6 +88,25 @@ trading config show-safe
 Команда печатает redacted-конфигурацию. `.env` не коммитится, `.env.example` остаётся безопасным шаблоном.
 
 ## MOEX ISS dry-run backfill
+
+Синхронизация локального реестра instruments по умолчанию не ходит в сеть:
+
+```bash
+trading data sync-moex-instruments
+```
+
+Для read-only сетевого sync нужен явный флаг:
+
+```bash
+trading data sync-moex-instruments --asset-class futures --allow-network --write
+```
+
+Просмотр локального реестра:
+
+```bash
+trading instruments list --venue MOEX --asset-class FUTURES
+trading instruments get --canonical-symbol MOEX:SiH6
+```
 
 По умолчанию команда не делает внешних HTTP-запросов:
 
@@ -99,6 +133,28 @@ trading data backfill-moex \
 
 Сохранение требует явного `--write`; иначе команда остаётся dry-run.
 
+Если инструмент уже есть в storage, можно использовать canonical symbol:
+
+```bash
+trading data backfill-moex \
+  --canonical-symbol MOEX:SiH6 \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02 \
+  --allow-network \
+  --write
+```
+
+Проверка качества сохранённых свечей:
+
+```bash
+trading data quality \
+  --canonical-symbol MOEX:SiH6 \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02
+```
+
 ## Alembic
 
 Initial migration лежит в `packages/storage/migrations`. Для локального PostgreSQL из docker compose:
@@ -116,7 +172,7 @@ Repository-слой в этом цикле sync SQLAlchemy. Default `DATABASE_UR
 - Пример:
 
 ```bash
-git switch -c codex/cycle-03-moex-iss-storage
+git switch -c codex/cycle-04-moex-instruments-dataset
 ```
 
 Название ветки должно коротко описывать одну задачу. Не смешивай несколько независимых изменений в одной

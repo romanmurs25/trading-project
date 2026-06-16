@@ -4,12 +4,14 @@ from typing import Any
 
 from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
-from trading_core.domain.enums import Venue
+from trading_core.domain.enums import AssetClass, Venue
 from trading_core.domain.models import (
     AuditLog,
     BacktestRun,
     Candle,
+    ContractSpec,
     Execution,
+    Instrument,
     Order,
     OrderIntent,
     Position,
@@ -23,7 +25,9 @@ from storage.sqlalchemy_models import (
     AuditLogRow,
     BacktestRunRow,
     CandleRow,
+    ContractSpecRow,
     ExecutionRow,
+    InstrumentRow,
     OrderIntentRow,
     OrderRow,
     PositionRow,
@@ -47,6 +51,68 @@ class SQLAlchemyStorage:
     @classmethod
     def from_engine(cls, engine: Engine) -> "SQLAlchemyStorage":
         return cls(sessionmaker(bind=engine))
+
+    def save_instrument(self, instrument: Instrument) -> None:
+        with self.session_factory.begin() as session:
+            existing = session.scalar(
+                select(InstrumentRow).where(InstrumentRow.id == instrument.id)
+            ) or session.scalar(
+                select(InstrumentRow).where(InstrumentRow.canonical_symbol == instrument.canonical_symbol)
+            )
+            if existing is None:
+                session.add(_instrument_row(instrument))
+            else:
+                _update_instrument_row(existing, instrument)
+
+    def save_instruments(self, instruments: list[Instrument]) -> None:
+        for instrument in instruments:
+            self.save_instrument(instrument)
+
+    def get_instrument(self, instrument_id: str) -> Instrument | None:
+        with self.session_factory() as session:
+            row = session.scalar(select(InstrumentRow).where(InstrumentRow.id == instrument_id))
+            return _instrument_from_row(row) if row is not None else None
+
+    def get_instrument_by_canonical_symbol(self, canonical_symbol: str) -> Instrument | None:
+        with self.session_factory() as session:
+            row = session.scalar(
+                select(InstrumentRow).where(InstrumentRow.canonical_symbol == canonical_symbol)
+            )
+            return _instrument_from_row(row) if row is not None else None
+
+    def list_instruments(
+        self,
+        venue: Venue | None = None,
+        asset_class: AssetClass | None = None,
+        is_active: bool | None = None,
+    ) -> list[Instrument]:
+        statement = select(InstrumentRow)
+        if venue is not None:
+            statement = statement.where(InstrumentRow.venue == venue.value)
+        if asset_class is not None:
+            statement = statement.where(InstrumentRow.asset_class == asset_class.value)
+        if is_active is not None:
+            statement = statement.where(InstrumentRow.is_active == is_active)
+        statement = statement.order_by(InstrumentRow.canonical_symbol)
+        with self.session_factory() as session:
+            return [_instrument_from_row(row) for row in session.scalars(statement).all()]
+
+    def save_contract_spec(self, contract_spec: ContractSpec) -> None:
+        with self.session_factory.begin() as session:
+            existing = session.scalar(
+                select(ContractSpecRow).where(ContractSpecRow.instrument_id == contract_spec.instrument_id)
+            )
+            if existing is None:
+                session.add(_contract_spec_row(contract_spec))
+            else:
+                _update_contract_spec_row(existing, contract_spec)
+
+    def get_contract_spec(self, instrument_id: str) -> ContractSpec | None:
+        with self.session_factory() as session:
+            row = session.scalar(
+                select(ContractSpecRow).where(ContractSpecRow.instrument_id == instrument_id)
+            )
+            return _contract_spec_from_row(row) if row is not None else None
 
     def save_candles(self, candles: list[Candle]) -> None:
         with self.session_factory.begin() as session:
@@ -243,6 +309,101 @@ class SQLAlchemyStorage:
                     ts=audit_log.ts,
                 )
             )
+
+
+def _instrument_row(instrument: Instrument) -> InstrumentRow:
+    return InstrumentRow(
+        id=instrument.id,
+        venue=instrument.venue.value,
+        asset_class=instrument.asset_class.value,
+        native_symbol=instrument.native_symbol,
+        canonical_symbol=instrument.canonical_symbol,
+        name=instrument.name,
+        lot_size=instrument.lot_size,
+        tick_size=instrument.tick_size,
+        tick_value=instrument.tick_value,
+        currency=instrument.currency,
+        expiry_date=instrument.expiry_date,
+        is_active=instrument.is_active,
+        metadata_json=instrument.metadata,
+    )
+
+
+def _update_instrument_row(row: InstrumentRow, instrument: Instrument) -> None:
+    row.id = instrument.id
+    row.venue = instrument.venue.value
+    row.asset_class = instrument.asset_class.value
+    row.native_symbol = instrument.native_symbol
+    row.canonical_symbol = instrument.canonical_symbol
+    row.name = instrument.name
+    row.lot_size = instrument.lot_size
+    row.tick_size = instrument.tick_size
+    row.tick_value = instrument.tick_value
+    row.currency = instrument.currency
+    row.expiry_date = instrument.expiry_date
+    row.is_active = instrument.is_active
+    row.metadata_json = instrument.metadata
+
+
+def _instrument_from_row(row: InstrumentRow) -> Instrument:
+    return Instrument(
+        id=row.id,
+        venue=Venue(row.venue),
+        asset_class=AssetClass(row.asset_class),
+        native_symbol=row.native_symbol,
+        canonical_symbol=row.canonical_symbol,
+        name=row.name,
+        lot_size=row.lot_size,
+        tick_size=row.tick_size,
+        tick_value=row.tick_value,
+        currency=row.currency,
+        expiry_date=row.expiry_date,
+        is_active=row.is_active,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _contract_spec_row(contract_spec: ContractSpec) -> ContractSpecRow:
+    return ContractSpecRow(
+        instrument_id=contract_spec.instrument_id,
+        lot_size=contract_spec.lot_size,
+        tick_size=contract_spec.tick_size,
+        tick_value=contract_spec.tick_value,
+        currency=contract_spec.currency,
+        expiry_date=contract_spec.expiry_date,
+        first_trade_date=contract_spec.first_trade_date,
+        last_trade_date=contract_spec.last_trade_date,
+        underlying_symbol=contract_spec.underlying_symbol,
+        metadata_json=contract_spec.metadata,
+    )
+
+
+def _update_contract_spec_row(row: ContractSpecRow, contract_spec: ContractSpec) -> None:
+    row.instrument_id = contract_spec.instrument_id
+    row.lot_size = contract_spec.lot_size
+    row.tick_size = contract_spec.tick_size
+    row.tick_value = contract_spec.tick_value
+    row.currency = contract_spec.currency
+    row.expiry_date = contract_spec.expiry_date
+    row.first_trade_date = contract_spec.first_trade_date
+    row.last_trade_date = contract_spec.last_trade_date
+    row.underlying_symbol = contract_spec.underlying_symbol
+    row.metadata_json = contract_spec.metadata
+
+
+def _contract_spec_from_row(row: ContractSpecRow) -> ContractSpec:
+    return ContractSpec(
+        instrument_id=row.instrument_id,
+        lot_size=row.lot_size,
+        tick_size=row.tick_size,
+        tick_value=row.tick_value,
+        currency=row.currency,
+        expiry_date=row.expiry_date,
+        first_trade_date=row.first_trade_date,
+        last_trade_date=row.last_trade_date,
+        underlying_symbol=row.underlying_symbol,
+        metadata=dict(row.metadata_json or {}),
+    )
 
 
 def _candle_row(candle: Candle) -> CandleRow:

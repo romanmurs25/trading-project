@@ -25,12 +25,17 @@ mypy .
 uvicorn apps.api.main:app --reload
 trading config show-safe
 trading backtest run-synthetic
+trading instruments list --venue MOEX --asset-class FUTURES
+trading data sync-moex-instruments
 trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
+trading data backfill-moex --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading backtest run-db --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
 trading db check-config
 ```
 
-SQLAlchemy models, Alembic initial migration и sync `SQLAlchemyStorage` уже добавлены. Repository-тесты
-используют SQLite in-memory; production PostgreSQL schema должна оставаться совместимой.
+SQLAlchemy models, Alembic migrations и sync `SQLAlchemyStorage` уже добавлены. Repository-тесты используют
+SQLite in-memory; production PostgreSQL schema должна оставаться совместимой.
 
 ## Доменные правила
 
@@ -52,7 +57,9 @@ SQLAlchemy models, Alembic initial migration и sync `SQLAlchemyStorage` уже 
 - Никогда не логируй токены, ключи, секреты и authorization headers.
 - Внешние API должны быть за портами и адаптерами.
 - MOEX ISS adapter остаётся read-only: historical candles only, без execution methods.
+- MOEX ISS instruments sync остаётся read-only и не требует credentials.
 - MOEX backfill CLI/API не делает внешний запрос без `--allow-network` / `allow_network=true`.
+- `backtest run-db` запускает сохранённые MOEX-свечи через PAPER-копию инструмента, не через live venue.
 - Kafka и Java не используются в MVP.
 - Kubernetes не используется в MVP.
 - Тесты не требуют реальных credentials и не отправляют live-ордера.

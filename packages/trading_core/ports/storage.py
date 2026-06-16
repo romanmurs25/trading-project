@@ -1,11 +1,14 @@
 from datetime import datetime
 from typing import Protocol
 
+from trading_core.domain.enums import AssetClass, Venue
 from trading_core.domain.models import (
     AuditLog,
     BacktestRun,
     Candle,
+    ContractSpec,
     Execution,
+    Instrument,
     Order,
     OrderIntent,
     Position,
@@ -17,6 +20,25 @@ from trading_core.domain.models import (
 
 
 class StoragePort(Protocol):
+    def save_instrument(self, instrument: Instrument) -> None: ...
+
+    def save_instruments(self, instruments: list[Instrument]) -> None: ...
+
+    def get_instrument(self, instrument_id: str) -> Instrument | None: ...
+
+    def get_instrument_by_canonical_symbol(self, canonical_symbol: str) -> Instrument | None: ...
+
+    def list_instruments(
+        self,
+        venue: Venue | None = None,
+        asset_class: AssetClass | None = None,
+        is_active: bool | None = None,
+    ) -> list[Instrument]: ...
+
+    def save_contract_spec(self, contract_spec: ContractSpec) -> None: ...
+
+    def get_contract_spec(self, instrument_id: str) -> ContractSpec | None: ...
+
     def save_candles(self, candles: list[Candle]) -> None: ...
 
     def load_candles(
