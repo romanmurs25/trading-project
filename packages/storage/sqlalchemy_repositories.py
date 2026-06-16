@@ -144,7 +144,7 @@ class SQLAlchemyStorage:
                     CandleRow.instrument_id == instrument_id,
                     CandleRow.interval == interval,
                     CandleRow.ts_start >= start,
-                    CandleRow.ts_start <= end,
+                    CandleRow.ts_start < end,
                 )
                 .order_by(CandleRow.ts_start)
             ).all()

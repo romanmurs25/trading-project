@@ -93,7 +93,7 @@ class InMemoryStorage:
             for candle in self.candles
             if candle.instrument_id == instrument_id
             and candle.interval == interval
-            and start <= candle.ts_start <= end
+            and start <= candle.ts_start < end
         ]
 
     def save_signal(self, signal: Signal) -> None:

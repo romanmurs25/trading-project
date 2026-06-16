@@ -86,6 +86,24 @@ def test_map_futures_instruments_maps_moex_rows_to_domain_models() -> None:
     assert instrument.metadata["moex_market"] == "forts"
 
 
+def test_map_futures_instruments_marks_missing_fields_as_incomplete() -> None:
+    incomplete_payload = {
+        "securities": {
+            "columns": ["SECID", "SHORTNAME"],
+            "data": [["BRH6", "BR-3.26"]],
+        }
+    }
+
+    instruments = map_futures_instruments(incomplete_payload)
+
+    instrument = instruments[0]
+    assert instrument.lot_size == Decimal("1")
+    assert instrument.tick_size == Decimal("1")
+    assert instrument.tick_value == Decimal("1")
+    assert instrument.currency == "RUB"
+    assert instrument.metadata["spec_incomplete"] is True
+
+
 def test_map_futures_contract_specs_maps_optional_dates_and_underlying() -> None:
     specs = map_futures_contract_specs(payload())
 

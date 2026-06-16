@@ -44,6 +44,7 @@ def map_futures_contract_specs(payload: dict[str, Any]) -> list[ContractSpec]:
 
 def _instrument_from_row(row: dict[str, Any]) -> Instrument:
     native_symbol = _required_string(row, ("SECID", "secid"), "SECID")
+    spec_incomplete = _is_spec_incomplete(row)
     return Instrument(
         id=_instrument_id(native_symbol),
         venue=Venue.MOEX,
@@ -57,7 +58,7 @@ def _instrument_from_row(row: dict[str, Any]) -> Instrument:
         currency=_optional_string(row, ("FACEUNIT", "CURRENCYID", "currencyid")) or DEFAULT_CURRENCY,
         expiry_date=_optional_date(row, ("MATDATE", "EXPIRATIONDATE", "matdate")),
         is_active=_is_active(row),
-        metadata=_metadata(row, spec_incomplete=False),
+        metadata=_metadata(row, spec_incomplete=spec_incomplete),
     )
 
 

@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from storage.in_memory import InMemoryStorage
 from trading_core.domain.enums import AssetClass, Venue
-from trading_core.domain.models import ContractSpec, Instrument
+from trading_core.domain.models import Candle, ContractSpec, Instrument
 
 
 def make_instrument(
@@ -43,6 +43,22 @@ def make_contract_spec() -> ContractSpec:
     )
 
 
+def make_candle(ts_start: datetime) -> Candle:
+    return Candle(
+        instrument_id="moex-si",
+        venue=Venue.MOEX,
+        interval="1m",
+        ts_start=ts_start,
+        ts_end=ts_start + timedelta(minutes=1),
+        open=Decimal("100"),
+        high=Decimal("101"),
+        low=Decimal("99"),
+        close=Decimal("100"),
+        volume=Decimal("10"),
+        source="test",
+    )
+
+
 def test_in_memory_storage_saves_lists_and_gets_instruments() -> None:
     storage = InMemoryStorage()
     instrument = make_instrument()
@@ -77,3 +93,15 @@ def test_in_memory_storage_saves_and_gets_contract_spec() -> None:
     storage.save_contract_spec(spec)
 
     assert storage.get_contract_spec("moex-si") == spec
+
+
+def test_in_memory_storage_load_candles_excludes_candle_exactly_at_end() -> None:
+    storage = InMemoryStorage()
+    start = datetime(2026, 1, 1, 7, 0, tzinfo=UTC)
+    first = make_candle(start)
+    at_end = make_candle(start + timedelta(minutes=1))
+
+    storage.save_candles([first, at_end])
+    loaded = storage.load_candles("moex-si", "1m", start, start + timedelta(minutes=1))
+
+    assert loaded == [first]
