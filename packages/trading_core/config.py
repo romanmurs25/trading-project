@@ -67,7 +67,7 @@ class AppConfig:
     )
     database_url: str = field(
         default_factory=lambda: os.getenv(
-            "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/trading"
+            "DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/trading"
         )
     )
     redis_url: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://localhost:6379/0"))

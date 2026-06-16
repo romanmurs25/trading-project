@@ -13,6 +13,26 @@ class PaperMarket:
     last: Decimal
 
 
+@dataclass(frozen=True)
+class PaperClosedTrade:
+    instrument_id: str
+    side_closed: Side
+    qty: Decimal
+    entry_price: Decimal
+    exit_price: Decimal
+    entry_commission: Decimal
+    exit_commission: Decimal
+    gross_pnl: Decimal
+    net_pnl: Decimal
+
+
+@dataclass
+class PaperOpenPosition:
+    qty: Decimal
+    avg_price: Decimal
+    entry_commission: Decimal
+
+
 @dataclass
 class PaperBroker:
     """Sync paper simulator.
@@ -32,8 +52,11 @@ class PaperBroker:
     executions: list[Execution] = field(default_factory=list)
     markets: dict[str, PaperMarket] = field(default_factory=dict)
     closed_trade_pnls: list[Decimal] = field(default_factory=list)
+    closed_trades: list[PaperClosedTrade] = field(default_factory=list)
     _idempotency_index: dict[str, tuple[str, list[str]]] = field(default_factory=dict)
     _pending_intents: dict[str, OrderIntent] = field(default_factory=dict)
+    _open_positions: dict[str, PaperOpenPosition] = field(default_factory=dict)
+    _realized_pnl_by_instrument: dict[str, Decimal] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.cash = self.initial_cash
@@ -108,7 +131,10 @@ class PaperBroker:
         return self.positions.get(instrument_id)
 
     def get_closed_trade_pnls(self) -> list[Decimal]:
-        return list(self.closed_trade_pnls)
+        return [trade.net_pnl for trade in self.closed_trades]
+
+    def get_closed_trades(self) -> list[PaperClosedTrade]:
+        return list(self.closed_trades)
 
     def get_executions(self) -> list[Execution]:
         return list(self.executions)
@@ -138,52 +164,108 @@ class PaperBroker:
         else:
             self.cash += gross - execution.commission
 
-        existing = self.positions.get(execution.instrument_id)
-        if existing is None or existing.qty == 0:
-            self.positions[execution.instrument_id] = Position(
-                instrument_id=execution.instrument_id,
-                venue=execution.venue,
+        open_position = self._open_positions.get(execution.instrument_id)
+        if open_position is None or open_position.qty == 0:
+            self._open_positions[execution.instrument_id] = PaperOpenPosition(
                 qty=signed_qty,
                 avg_price=execution.price,
-                realized_pnl=Decimal("0") - execution.commission,
+                entry_commission=execution.commission,
             )
-            self._mark_position(execution.instrument_id)
+            self._sync_position(execution.instrument_id, execution.venue)
             return
 
-        new_qty = existing.qty + signed_qty
-        realized_delta = self._realized_delta(existing, execution)
-        entry_commission_allocated = self._entry_commission_for_closed_qty(existing, execution)
-        if new_qty == 0:
-            avg_price = execution.price
-        elif (existing.qty > 0 and signed_qty > 0) or (existing.qty < 0 and signed_qty < 0):
-            existing_notional = abs(existing.qty) * existing.avg_price
-            execution_notional = execution.qty * execution.price
-            avg_price = (existing_notional + execution_notional) / abs(new_qty)
+        if (open_position.qty > 0 and signed_qty > 0) or (open_position.qty < 0 and signed_qty < 0):
+            self._increase_position(execution, open_position, signed_qty)
         else:
-            avg_price = existing.avg_price if abs(new_qty) < abs(existing.qty) else execution.price
+            self._close_or_reverse_position(execution, open_position, signed_qty)
+        self._sync_position(execution.instrument_id, execution.venue)
 
-        self.positions[execution.instrument_id] = existing.model_copy(
-            update={
-                "qty": new_qty,
-                "avg_price": avg_price,
-                "realized_pnl": (
-                    existing.realized_pnl + realized_delta - execution.commission - entry_commission_allocated
-                ),
-                "updated_at": utc_now(),
-            }
+    def _increase_position(
+        self,
+        execution: Execution,
+        open_position: PaperOpenPosition,
+        signed_qty: Decimal,
+    ) -> None:
+        new_qty = open_position.qty + signed_qty
+        existing_notional = abs(open_position.qty) * open_position.avg_price
+        execution_notional = execution.qty * execution.price
+        self._open_positions[execution.instrument_id] = PaperOpenPosition(
+            qty=new_qty,
+            avg_price=(existing_notional + execution_notional) / abs(new_qty),
+            entry_commission=open_position.entry_commission + execution.commission,
         )
-        if realized_delta != 0:
-            self.closed_trade_pnls.append(realized_delta - execution.commission - entry_commission_allocated)
-        self._mark_position(execution.instrument_id)
 
-    def _realized_delta(self, position: Position, execution: Execution) -> Decimal:
-        if position.qty > 0 and execution.side == Side.SELL:
-            closing_qty = min(position.qty, execution.qty)
-            return (execution.price - position.avg_price) * closing_qty
-        if position.qty < 0 and execution.side == Side.BUY:
-            closing_qty = min(abs(position.qty), execution.qty)
-            return (position.avg_price - execution.price) * closing_qty
-        return Decimal("0")
+    def _close_or_reverse_position(
+        self,
+        execution: Execution,
+        open_position: PaperOpenPosition,
+        signed_qty: Decimal,
+    ) -> None:
+        close_qty = min(abs(open_position.qty), execution.qty)
+        entry_commission = open_position.entry_commission * (close_qty / abs(open_position.qty))
+        exit_commission = execution.commission * (close_qty / execution.qty)
+        side_closed = Side.BUY if open_position.qty > 0 else Side.SELL
+        if side_closed == Side.BUY:
+            gross_pnl = (execution.price - open_position.avg_price) * close_qty
+        else:
+            gross_pnl = (open_position.avg_price - execution.price) * close_qty
+        net_pnl = gross_pnl - entry_commission - exit_commission
+        self._record_closed_trade(
+            PaperClosedTrade(
+                instrument_id=execution.instrument_id,
+                side_closed=side_closed,
+                qty=close_qty,
+                entry_price=open_position.avg_price,
+                exit_price=execution.price,
+                entry_commission=entry_commission,
+                exit_commission=exit_commission,
+                gross_pnl=gross_pnl,
+                net_pnl=net_pnl,
+            )
+        )
+
+        remaining_open_qty = abs(open_position.qty) - close_qty
+        remaining_execution_qty = execution.qty - close_qty
+        if remaining_open_qty > 0:
+            direction = Decimal("1") if open_position.qty > 0 else Decimal("-1")
+            self._open_positions[execution.instrument_id] = PaperOpenPosition(
+                qty=direction * remaining_open_qty,
+                avg_price=open_position.avg_price,
+                entry_commission=open_position.entry_commission - entry_commission,
+            )
+            return
+        if remaining_execution_qty > 0:
+            direction = Decimal("1") if signed_qty > 0 else Decimal("-1")
+            self._open_positions[execution.instrument_id] = PaperOpenPosition(
+                qty=direction * remaining_execution_qty,
+                avg_price=execution.price,
+                entry_commission=execution.commission - exit_commission,
+            )
+            return
+        self._open_positions[execution.instrument_id] = PaperOpenPosition(
+            qty=Decimal("0"),
+            avg_price=execution.price,
+            entry_commission=Decimal("0"),
+        )
+
+    def _record_closed_trade(self, trade: PaperClosedTrade) -> None:
+        self.closed_trades.append(trade)
+        self.closed_trade_pnls.append(trade.net_pnl)
+        self._realized_pnl_by_instrument[trade.instrument_id] = (
+            self._realized_pnl_by_instrument.get(trade.instrument_id, Decimal("0")) + trade.net_pnl
+        )
+
+    def _sync_position(self, instrument_id: str, venue: Venue) -> None:
+        open_position = self._open_positions[instrument_id]
+        realized_pnl = self._realized_pnl_by_instrument.get(instrument_id, Decimal("0"))
+        self.positions[instrument_id] = Position(
+            instrument_id=instrument_id,
+            venue=venue,
+            qty=open_position.qty,
+            avg_price=open_position.avg_price,
+            realized_pnl=realized_pnl,
+        )
+        self._mark_position(instrument_id)
 
     def _mark_position(self, instrument_id: str) -> None:
         position = self.positions.get(instrument_id)
@@ -241,14 +323,3 @@ class PaperBroker:
                 order.id,
                 [execution.id for execution in executions],
             )
-
-    def _entry_commission_for_closed_qty(self, position: Position, execution: Execution) -> Decimal:
-        closes_long = position.qty > 0 and execution.side == Side.SELL
-        closes_short = position.qty < 0 and execution.side == Side.BUY
-        if closes_long or closes_short:
-            closing_qty = min(abs(position.qty), execution.qty)
-            if abs(position.qty) == 0:
-                return Decimal("0")
-            total_entry_commission = abs(position.realized_pnl) if position.realized_pnl < 0 else Decimal("0")
-            return total_entry_commission * (closing_qty / abs(position.qty))
-        return Decimal("0")

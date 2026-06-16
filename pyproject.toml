@@ -9,10 +9,12 @@ description = "Safety-first modular monolith for intraday trading research and p
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+  "alembic>=1.13.0",
   "fastapi>=0.115.0",
   "httpx>=0.27.0",
   "numpy>=2.0.0",
   "pandas>=2.2.0",
+  "psycopg[binary]>=3.2.0",
   "pydantic>=2.8.0",
   "SQLAlchemy>=2.0.0",
   "typer>=0.12.0",
@@ -56,5 +58,5 @@ mypy_path = ["packages", "."]
 exclude = ["tests/"]
 
 [[tool.mypy.overrides]]
-module = ["fastapi.*", "typer.*"]
+module = ["alembic", "alembic.*", "fastapi.*", "typer.*"]
 ignore_missing_imports = true

@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, DateTime, Index, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, Date, DateTime, Index, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -22,6 +22,8 @@ class InstrumentRow(Base):
     tick_size: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     tick_value: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     currency: Mapped[str] = mapped_column(String(16))
+    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    is_active: Mapped[bool] = mapped_column(default=True)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
 
 
@@ -42,6 +44,8 @@ class CandleRow(Base):
     low: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     close: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     volume: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    value: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    trades_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(64))
 
 
@@ -64,12 +68,20 @@ class OrderIntentRow(Base):
 
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
     strategy_id: Mapped[str] = mapped_column(String(128))
+    signal_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     venue: Mapped[str] = mapped_column(String(32))
     instrument_id: Mapped[str] = mapped_column(String(128))
     side: Mapped[str] = mapped_column(String(16))
     order_type: Mapped[str] = mapped_column(String(32))
     qty: Mapped[Decimal] = mapped_column(Numeric(38, 18))
-    idempotency_key: Mapped[str] = mapped_column(String(256), unique=True)
+    limit_price: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    stop_price: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    take_profit: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    stop_loss: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    time_in_force: Mapped[str] = mapped_column(String(32))
+    reason: Mapped[str] = mapped_column(String(512))
+    risk_amount: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(256), unique=True, nullable=True)
     payload: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -98,6 +110,7 @@ class OrderRow(Base):
     order_type: Mapped[str] = mapped_column(String(32))
     qty: Mapped[Decimal] = mapped_column(Numeric(38, 18))
     filled_qty: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    avg_fill_price: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

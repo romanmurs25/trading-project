@@ -1,8 +1,9 @@
 # Storage Plan
 
-Во втором цикле добавлен SQLAlchemy foundation без реального подключения в unit-тестах.
+Во втором цикле добавлен SQLAlchemy foundation, а в третьем — Alembic initial migration и sync repository
+foundation.
 
-## Что уже описано
+## Что уже описано и реализовано
 
 `packages/storage/sqlalchemy_models.py` содержит модели для ключевых таблиц:
 
@@ -30,6 +31,6 @@ Decimal-значения описаны как `Numeric(38, 18)`. Временн
 
 ## Следующий шаг
 
-В следующем цикле нужно добавить Alembic, первую миграцию, async repositories и integration-тесты с
-PostgreSQL через Docker Compose или testcontainers-подход. До этого unit-тесты остаются полностью локальными
-и используют `InMemoryStorage`.
+Следующий storage-шаг — добавить PostgreSQL-backed integration tests, repository methods для выборок orders,
+executions и backtest runs, а затем подключить API endpoints к DB-backed storage. В MVP repository выбран
+sync SQLAlchemy, чтобы Alembic и runtime использовали один драйвер (`postgresql+psycopg`).

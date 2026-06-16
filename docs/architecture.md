@@ -17,13 +17,15 @@ MVP использует clean/hexagonal architecture внутри Python-мон
 
 ```text
 OrderIntent -> ExecutionEngine -> audit(before_risk_check) -> RiskEngine
-  -> rejected: Order(RISK_REJECTED) + audit(risk_rejected)
-  -> approved: audit(before_broker_submission) -> ExecutionPort -> Order/Executions
-  -> Storage + audit(after_broker_submission)
+  -> rejected: Order NEW -> RISK_REJECTED + audit(order_state_transition)
+  -> approved: Order NEW -> APPROVED + audit(order_state_transition)
+  -> broker submission: APPROVED -> SUBMITTED -> FILLED/FAILED/etc.
+  -> Storage + executions + audit(after_broker_submission)
 ```
 
 Стратегия не знает о брокере. Брокер не принимает решение о риске. `RiskEngine` является обязательным
-контуром перед исполнением.
+контуром перед исполнением. `ExecutionEngine` не выставляет state напрямую: каждый переход проходит через
+`OrderStateMachine`.
 
 ## Поток backtest
 
@@ -36,6 +38,11 @@ Candle -> Strategy -> Signal -> OrderIntent -> RiskEngine -> BacktestBrokerPort 
 
 ## Хранение
 
-Для execution flow доступен `InMemoryStorage`. SQLAlchemy model foundation описан в
-`packages/storage/sqlalchemy_models.py`, план миграций — в `docs/storage_plan.md`. Alembic будет добавлен
-следующим storage-циклом.
+Для execution flow доступен `InMemoryStorage`. В cycle 3 добавлены SQLAlchemy models, Alembic initial
+migration и sync `SQLAlchemyStorage`. Repository tests используют SQLite in-memory, а schema остаётся
+совместимой с PostgreSQL.
+
+## MOEX ISS read-only market data
+
+`adapters.moex_iss` реализует только historical candles. Adapter не содержит execution methods и не требует
+credentials. CLI/API backfill по умолчанию dry-run и не делает внешний запрос без явного разрешения сети.
