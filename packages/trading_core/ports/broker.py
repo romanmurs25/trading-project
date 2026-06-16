@@ -1,0 +1,13 @@
+from typing import Protocol
+
+from trading_core.domain.models import PortfolioSnapshot, Position
+
+
+class BrokerPort(Protocol):
+    async def get_portfolio(self) -> PortfolioSnapshot: ...
+
+    async def get_positions(self) -> list[Position]: ...
+
+    async def get_accounts(self) -> list[str]: ...
+
+    async def get_margin_state(self) -> dict[str, str]: ...

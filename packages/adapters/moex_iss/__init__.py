@@ -1,0 +1,1 @@
+"""MOEX ISS adapter skeleton."""
