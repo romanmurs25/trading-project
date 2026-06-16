@@ -122,8 +122,14 @@ async def test_approved_paper_order_calls_broker_and_stores_outputs() -> None:
     ]
     assert len(storage.order_intents) == 1
     assert len(storage.risk_decisions) == 1
-    assert len(storage.orders) == 1
+    assert [order.state for order in storage.orders] == [
+        OrderState.APPROVED,
+        OrderState.SUBMITTED,
+        OrderState.FILLED,
+    ]
+    assert {order.id for order in storage.orders} == {result.order.id}
     assert len(storage.executions) == 1
+    assert storage.executions[0].order_id == result.order.id
 
 
 class FailingExecutionAdapter:

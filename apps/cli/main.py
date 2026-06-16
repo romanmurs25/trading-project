@@ -85,8 +85,9 @@ def db_check_config() -> None:
 @db_app.command("init-placeholder")
 def db_init_placeholder() -> None:
     typer.echo(
-        "SQLAlchemy models are defined in packages/storage/sqlalchemy_models.py; "
-        "Alembic migration will be added in the next storage cycle."
+        "SQLAlchemy models and Alembic initial migration are available. "
+        "Use `alembic upgrade head` for real DB migration. "
+        "Repository tests use SQLite in-memory."
     )
 
 

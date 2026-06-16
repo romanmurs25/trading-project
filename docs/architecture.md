@@ -27,6 +27,10 @@ OrderIntent -> ExecutionEngine -> audit(before_risk_check) -> RiskEngine
 контуром перед исполнением. `ExecutionEngine` не выставляет state напрямую: каждый переход проходит через
 `OrderStateMachine`.
 
+`ExecutionEngine` создаёт canonical `Order.id` до broker submission и сохраняет snapshots после значимых
+переходов состояния. Если adapter возвращает свой `Order.id`, он не становится доменным canonical id:
+broker-поля и executions remap-ятся обратно на canonical order.
+
 ## Поток backtest
 
 ```text

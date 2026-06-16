@@ -72,6 +72,7 @@ class RecordingExecutionAdapter:
         self.returned_state = returned_state
         self.fail = fail
         self.calls = 0
+        self.last_order: Order | None = None
 
     async def place_order(self, order_intent: OrderIntent) -> BrokerOrderResult:
         self.calls += 1
@@ -89,6 +90,7 @@ class RecordingExecutionAdapter:
             filled_qty=order_intent.qty if self.returned_state == OrderState.FILLED else Decimal("0"),
             avg_fill_price=Decimal("100.05") if self.returned_state == OrderState.FILLED else None,
         )
+        self.last_order = order
         executions = []
         if self.returned_state == OrderState.FILLED:
             executions.append(
@@ -168,6 +170,30 @@ async def test_approved_paper_order_passes_through_valid_state_transitions() -> 
         {"from_state": "APPROVED", "to_state": "SUBMITTED", "reason": "broker_submitted"},
         {"from_state": "SUBMITTED", "to_state": "FILLED", "reason": "broker_filled"},
     ]
+    transition_logs = [log for log in storage.audit_logs if log.action == "order_state_transition"]
+    assert all(log.entity_id == result.order.id for log in transition_logs)
+    assert all(execution.order_id == result.order.id for execution in storage.executions)
+
+
+@pytest.mark.asyncio
+async def test_broker_order_identity_is_merged_into_canonical_order() -> None:
+    storage = InMemoryStorage()
+    adapter = RecordingExecutionAdapter(returned_state=OrderState.FILLED)
+    engine = make_engine(adapter, storage)
+
+    result = await engine.execute_order_intent(make_intent(), make_context())
+
+    broker_order = adapter.last_order
+    assert broker_order is not None
+    assert broker_order.id != result.order.id
+    assert result.order.id == storage.orders[-1].id
+    assert result.order.broker_order_id == broker_order.broker_order_id
+    assert result.order.filled_qty == broker_order.filled_qty
+    assert result.order.avg_fill_price == broker_order.avg_fill_price
+    transition_logs = [log for log in storage.audit_logs if log.action == "order_state_transition"]
+    assert all(log.entity_id == result.order.id for log in transition_logs)
+    assert all(execution.order_id == result.order.id for execution in result.executions)
+    assert all(execution.order_id == result.order.id for execution in storage.executions)
 
 
 @pytest.mark.asyncio

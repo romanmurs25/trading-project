@@ -43,6 +43,7 @@ class MoexIssMarketDataAdapter:
         start: datetime,
         end: datetime,
     ) -> list[Candle]:
+        self._validate_datetime_window(start, end)
         client = self.client or MoexIssClient(base_url=self.config.moex_iss_base_url)
         path = self._candles_path(instrument)
         offset = 0
@@ -58,7 +59,7 @@ class MoexIssMarketDataAdapter:
                 },
             )
             page = map_candles_payload(payload, instrument, interval, self.config.exchange_timezone)
-            candles.extend(page)
+            candles.extend(self._filter_window(page, start, end))
             if len(page) < self.page_size:
                 break
             offset += len(page)
@@ -79,6 +80,15 @@ class MoexIssMarketDataAdapter:
 
     async def get_trading_status(self, instrument: Instrument) -> str:
         return "read_only_unknown"
+
+    def _validate_datetime_window(self, start: datetime, end: datetime) -> None:
+        if start.tzinfo is None or end.tzinfo is None:
+            raise DataValidationError("MOEX ISS historical candles require timezone-aware start/end")
+        if start >= end:
+            raise DataValidationError("MOEX ISS historical candles require start < end")
+
+    def _filter_window(self, candles: list[Candle], start: datetime, end: datetime) -> list[Candle]:
+        return [candle for candle in candles if start <= candle.ts_start < end]
 
     def _candles_path(self, instrument: Instrument) -> str:
         metadata = instrument.metadata

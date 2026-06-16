@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from adapters.moex_iss.market_data_adapter import MoexIssMarketDataAdapter, moex_interval
 from trading_core.domain.enums import AssetClass, Venue
+from trading_core.domain.errors import DataValidationError
 from trading_core.domain.models import Instrument
 
 
@@ -97,6 +98,66 @@ async def test_moex_market_data_adapter_paginates_until_short_page() -> None:
 
     assert len(candles) == 2
     assert [call[1]["start"] for call in client.calls] == ["0", "1", "2"]
+
+
+@pytest.mark.asyncio
+async def test_moex_market_data_adapter_filters_exact_datetime_window() -> None:
+    client = FakeMoexClient(
+        [
+            payload(
+                [
+                    ["2026-01-01 10:00:00", "2026-01-01 10:01:00", "100", "101", "99", "100", "1", "1"],
+                    ["2026-01-01 10:01:00", "2026-01-01 10:02:00", "101", "102", "100", "101", "1", "1"],
+                    ["2026-01-01 10:02:00", "2026-01-01 10:03:00", "102", "103", "101", "102", "1", "1"],
+                    ["2026-01-01 10:03:00", "2026-01-01 10:04:00", "103", "104", "102", "103", "1", "1"],
+                ]
+            )
+        ]
+    )
+    adapter = MoexIssMarketDataAdapter(client=client, page_size=100)
+
+    candles = await adapter.get_historical_candles(
+        make_instrument(),
+        "1m",
+        datetime(2026, 1, 1, 7, 1, tzinfo=UTC),
+        datetime(2026, 1, 1, 7, 3, tzinfo=UTC),
+    )
+
+    assert [candle.close for candle in candles] == [Decimal("101"), Decimal("102")]
+
+
+@pytest.mark.asyncio
+async def test_moex_market_data_adapter_rejects_naive_datetime_window() -> None:
+    adapter = MoexIssMarketDataAdapter(client=FakeMoexClient([]))
+
+    with pytest.raises(DataValidationError):
+        await adapter.get_historical_candles(
+            make_instrument(),
+            "1m",
+            datetime(2026, 1, 1),
+            datetime(2026, 1, 2, tzinfo=UTC),
+        )
+
+    with pytest.raises(DataValidationError):
+        await adapter.get_historical_candles(
+            make_instrument(),
+            "1m",
+            datetime(2026, 1, 1, tzinfo=UTC),
+            datetime(2026, 1, 2),
+        )
+
+
+@pytest.mark.asyncio
+async def test_moex_market_data_adapter_rejects_start_at_or_after_end() -> None:
+    adapter = MoexIssMarketDataAdapter(client=FakeMoexClient([]))
+
+    with pytest.raises(DataValidationError):
+        await adapter.get_historical_candles(
+            make_instrument(),
+            "1m",
+            datetime(2026, 1, 2, tzinfo=UTC),
+            datetime(2026, 1, 2, tzinfo=UTC),
+        )
 
 
 def test_moex_interval_mapping_is_explicit() -> None:

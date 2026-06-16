@@ -70,6 +70,7 @@ class ExecutionEngine:
             "risk_approved",
             audit_logs,
         )
+        self._save_order(approved_order)
         try:
             audit_logs.append(self._audit("order_intent", safe_intent.id, "before_broker_submission"))
             broker_result = await self.execution_port.place_order(safe_intent)
@@ -92,15 +93,18 @@ class ExecutionEngine:
             )
 
         final_order = self._validate_broker_order_state_path(approved_order, broker_result.order, audit_logs)
-        self._save_order(final_order)
-        for execution in broker_result.executions:
+        remapped_executions = [
+            self._remap_execution_order_id(execution, final_order.id)
+            for execution in broker_result.executions
+        ]
+        for execution in remapped_executions:
             self._save_execution(execution)
         audit_logs.append(self._audit("order", final_order.id, "after_broker_submission"))
         return OrderExecutionResult(
             order_intent=safe_intent,
             risk_decision=decision,
             order=final_order,
-            executions=broker_result.executions,
+            executions=remapped_executions,
             audit_logs=audit_logs,
             submitted=True,
         )
@@ -179,7 +183,33 @@ class ExecutionEngine:
         current = approved_order
         for state, reason in steps:
             current = self._transition_order(current, state, reason, audit_logs)
-        return broker_order
+            if state == OrderState.SUBMITTED:
+                current = current.model_copy(
+                    update={
+                        "broker_order_id": broker_order.broker_order_id,
+                        "updated_at": broker_order.updated_at,
+                    }
+                )
+            if state == target:
+                current = self._merge_broker_order(current, broker_order)
+            self._save_order(current)
+        return current
+
+    def _merge_broker_order(self, canonical_order: Order, broker_order: Order) -> Order:
+        return canonical_order.model_copy(
+            update={
+                "broker_order_id": broker_order.broker_order_id,
+                "filled_qty": broker_order.filled_qty,
+                "avg_fill_price": broker_order.avg_fill_price,
+                "updated_at": broker_order.updated_at,
+                "state": broker_order.state,
+            }
+        )
+
+    def _remap_execution_order_id(self, execution: Execution, canonical_order_id: str) -> Execution:
+        if execution.order_id == canonical_order_id:
+            return execution
+        return execution.model_copy(update={"order_id": canonical_order_id})
 
     def _transition_order(
         self,
