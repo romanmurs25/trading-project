@@ -171,6 +171,48 @@ def data_build_continuous(request_body: BuildContinuousRequest, request: Request
     }
 
 
+@router.get("/api/continuous-series")
+def list_continuous_series(
+    request: Request,
+    underlying_symbol: str | None = Query(None),
+    interval: str | None = Query(None),
+) -> list[dict[str, object]]:
+    series = _storage(request).list_continuous_series(
+        underlying_symbol=underlying_symbol,
+        interval=interval,
+    )
+    return [_model_json(item) for item in series]
+
+
+@router.get("/api/continuous-series/{series_id}/components")
+def list_continuous_series_components(series_id: str, request: Request) -> dict[str, object]:
+    storage = _storage(request)
+    if storage.get_continuous_series(series_id) is None:
+        raise HTTPException(status_code=404, detail="continuous series not found")
+    return {
+        "continuous_series_id": series_id,
+        "components": [
+            _model_json(component)
+            for component in storage.load_continuous_series_components(series_id)
+        ],
+    }
+
+
+@router.get("/api/roll-events")
+def list_roll_events(
+    request: Request,
+    underlying_symbol: str | None = Query(None),
+    from_date: date | None = Query(None, alias="from"),
+    to_date: date | None = Query(None, alias="to"),
+) -> list[dict[str, object]]:
+    events = _storage(request).load_roll_events(
+        underlying_symbol=underlying_symbol,
+        start_date=from_date,
+        end_date=to_date,
+    )
+    return [_model_json(event) for event in events]
+
+
 def _storage(request: Request) -> StoragePort:
     if not hasattr(request.app.state, "storage"):
         request.app.state.storage = InMemoryStorage()

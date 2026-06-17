@@ -81,6 +81,26 @@ def test_in_memory_save_and_get_continuous_series_and_components() -> None:
     assert storage.load_continuous_series_components("series-1") == [continuous_component]
 
 
+def test_in_memory_lists_continuous_series_with_filters() -> None:
+    storage = InMemoryStorage()
+    si_series = series()
+    ri_series = si_series.model_copy(
+        update={
+            "id": "series-2",
+            "underlying_symbol": "RI",
+            "canonical_symbol": "MOEX:RI:CONT:10m",
+            "interval": "10m",
+        }
+    )
+
+    storage.save_continuous_series(si_series)
+    storage.save_continuous_series(ri_series)
+
+    assert storage.list_continuous_series() == [ri_series, si_series]
+    assert storage.list_continuous_series(underlying_symbol="Si") == [si_series]
+    assert storage.list_continuous_series(interval="10m") == [ri_series]
+
+
 def test_in_memory_save_and_load_roll_events() -> None:
     storage = InMemoryStorage()
 

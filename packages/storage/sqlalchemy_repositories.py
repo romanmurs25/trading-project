@@ -432,6 +432,24 @@ class SQLAlchemyStorage:
             )
             return _continuous_series_from_row(row) if row is not None else None
 
+    def list_continuous_series(
+        self,
+        underlying_symbol: str | None = None,
+        interval: str | None = None,
+    ) -> list[ContinuousSeries]:
+        statement = select(ContinuousSeriesRow)
+        if underlying_symbol is not None:
+            statement = statement.where(ContinuousSeriesRow.underlying_symbol == underlying_symbol)
+        if interval is not None:
+            statement = statement.where(ContinuousSeriesRow.interval == interval)
+        statement = statement.order_by(
+            ContinuousSeriesRow.underlying_symbol,
+            ContinuousSeriesRow.interval,
+            ContinuousSeriesRow.start,
+        )
+        with self.session_factory() as session:
+            return [_continuous_series_from_row(row) for row in session.scalars(statement).all()]
+
     def save_continuous_series_components(self, components: list[ContinuousSeriesComponent]) -> None:
         with self.session_factory.begin() as session:
             for component in components:

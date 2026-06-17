@@ -42,6 +42,12 @@ trading research report --research-run-id <id> --format json
 trading research compare --research-run-id <id> --sort-by profit_factor
 trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
 trading db check-config
+npm --prefix apps/web install
+npm --prefix apps/web run dev
+npm --prefix apps/web run lint
+npm --prefix apps/web run typecheck
+npm --prefix apps/web run test -- --run
+npm --prefix apps/web run build
 ```
 
 SQLAlchemy models, Alembic migrations и sync `SQLAlchemyStorage` уже добавлены. Repository-тесты используют
@@ -77,6 +83,9 @@ SQLite in-memory; production PostgreSQL schema должна оставаться
 - Session-aware quality должен использовать только сохранённые candles и локальные templates.
 - Continuous futures MVP не делает price adjustment и не должен использовать live/streaming data.
 - Roll rules MVP основаны на expiry/last_trade_date; liquidity/open-interest roll пока не реализован.
+- Frontend dashboard живёт в `apps/web`, работает только через HTTP API и не импортирует Python packages.
+- Frontend dashboard остаётся read-only: никаких order forms, broker credentials, live controls или WebSocket.
+- Decimal strings могут конвертироваться в JS `number` только для отрисовки графиков; расчёты остаются на backend.
 - Kafka и Java не используются в MVP.
 - Kubernetes не используется в MVP.
 - Тесты не требуют реальных credentials и не отправляют live-ордера.

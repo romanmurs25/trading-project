@@ -14,6 +14,8 @@ MVP использует clean/hexagonal architecture внутри Python-мон
   для research/backtest workflows.
 - `adapters` реализуют или подготавливают внешние интеграции.
 - `apps` собирают ядро и адаптеры в API/CLI.
+- `apps/web` содержит read-only frontend research dashboard. Он не импортирует Python packages и общается с
+  backend только через HTTP API.
 
 ## Поток ордера в MVP
 
@@ -88,6 +90,19 @@ ResearchRun request
 
 API research endpoints MVP выполняются синхронно и используют `app.state.storage`. Они не делают внешних
 сетевых запросов и не добавляют live execution path.
+
+## Frontend research dashboard
+
+Cycle 7 добавляет Vite/React приложение в `apps/web` внутри monorepo:
+
+```text
+Browser -> apps/web -> HTTP API -> FastAPI routers -> StoragePort
+```
+
+Frontend показывает сохранённые instruments, quality reports, sessions, futures chain, continuous futures и
+research результаты. Он не имеет доступа к БД, broker adapters, `trading_core` или env backend напрямую.
+В интерфейсе нет order forms, broker credential forms, live trading controls, live stream/WebSocket или
+автоматического polling, который запускает write-операции.
 
 ## MOEX market realism
 
