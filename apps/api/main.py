@@ -1,7 +1,10 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from storage.in_memory import InMemoryStorage
 
+from apps.api.demo_data import seed_demo_data
 from apps.api.routers import (
     backtests,
     health,
@@ -28,7 +31,10 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
-    application.state.storage = InMemoryStorage()
+    storage = InMemoryStorage()
+    if _should_seed_demo_data():
+        seed_demo_data(storage)
+    application.state.storage = storage
     application.include_router(health.router)
     application.include_router(instruments.router)
     application.include_router(market_data.router)
@@ -40,6 +46,10 @@ def create_app() -> FastAPI:
     application.include_router(orders.router)
     application.include_router(journal.router)
     return application
+
+
+def _should_seed_demo_data() -> bool:
+    return os.environ.get("APP_SEED_DEMO_DATA", "").strip().lower() == "true"
 
 
 app = create_app()
