@@ -20,6 +20,30 @@ Backend запускается отдельно:
 uvicorn apps.api.main:app --reload
 ```
 
+## Локальная ручная проверка dashboard
+
+Полный сценарий: [../../docs/local_manual_qa.md](../../docs/local_manual_qa.md).
+
+Терминал 1 из корня репозитория:
+
+```bash
+PYTHONPATH=packages:. APP_SEED_DEMO_DATA=true uvicorn apps.api.main:app --reload --port 8000
+```
+
+Терминал 2:
+
+```bash
+cd apps/web
+npm ci
+VITE_API_BASE_URL=http://localhost:8000 npm run dev -- --host 127.0.0.1
+```
+
+Открыть:
+
+```text
+http://localhost:5173
+```
+
 ## Проверки
 
 ```bash

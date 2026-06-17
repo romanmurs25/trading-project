@@ -109,6 +109,30 @@ npm --prefix apps/web install
 VITE_API_BASE_URL=http://localhost:8000 npm --prefix apps/web run dev
 ```
 
+### Локальная ручная проверка dashboard
+
+Полный сценарий: [docs/local_manual_qa.md](docs/local_manual_qa.md).
+
+Терминал 1:
+
+```bash
+PYTHONPATH=packages:. APP_SEED_DEMO_DATA=true uvicorn apps.api.main:app --reload --port 8000
+```
+
+Терминал 2:
+
+```bash
+cd apps/web
+npm ci
+VITE_API_BASE_URL=http://localhost:8000 npm run dev -- --host 127.0.0.1
+```
+
+Затем открыть:
+
+```text
+http://localhost:5173
+```
+
 Доступные root-команды:
 
 ```bash
