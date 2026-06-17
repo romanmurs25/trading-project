@@ -55,6 +55,9 @@ def test_backtest_engine_runs_on_synthetic_candles() -> None:
     assert result.trades_count >= 1
     assert result.final_equity > Decimal("0")
     assert result.metrics["profit_factor"] >= Decimal("0")
+    assert result.equity_curve
+    assert result.equity_curve[-1].equity == result.final_equity
+    assert isinstance(result.trade_records, list)
 
 
 class OneShotSignalStrategy:
@@ -132,6 +135,8 @@ def test_backtest_closes_position_by_take_profit() -> None:
     assert result.closed_trades_count == 1
     assert result.executions_count == 2
     assert result.total_pnl > Decimal("0")
+    assert len(result.trade_records) == 1
+    assert result.trade_records[0].net_pnl > Decimal("0")
 
 
 def test_backtest_closes_position_by_stop_loss() -> None:

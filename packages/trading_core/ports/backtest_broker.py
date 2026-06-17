@@ -1,7 +1,19 @@
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Protocol
 
+from trading_core.domain.enums import Side
 from trading_core.domain.models import Execution, Order, OrderIntent, Position
+
+
+class ClosedTradeLike(Protocol):
+    instrument_id: str
+    side_closed: Side
+    qty: Decimal
+    entry_price: Decimal
+    exit_price: Decimal
+    gross_pnl: Decimal
+    net_pnl: Decimal
 
 
 class BacktestBrokerPort(Protocol):
@@ -20,3 +32,7 @@ class BacktestBrokerPort(Protocol):
     def get_closed_trade_pnls(self) -> list[Decimal]: ...
 
     def get_executions(self) -> list[Execution]: ...
+
+
+class ClosedTradeProvider(Protocol):
+    def get_closed_trades(self) -> Sequence[ClosedTradeLike]: ...

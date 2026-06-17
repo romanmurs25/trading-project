@@ -17,6 +17,10 @@ foundation, в четвёртом — реестр MOEX instruments/contract spe
 - `executions`
 - `positions`
 - `backtest_runs`
+- `research_runs`
+- `research_backtest_results`
+- `backtest_equity_points`
+- `backtest_trade_records`
 - `audit_logs`
 - `system_events`
 
@@ -29,6 +33,11 @@ Decimal-значения описаны как `Numeric(38, 18)`. Временн
 - `candles`: unique constraint по `venue, instrument_id, interval, ts_start`.
 - `orders`: unique index через `idempotency_key`.
 - `executions`: nullable unique constraint по `venue, broker_execution_id`.
+- `research_runs`: indexes по `strategy_id`, `canonical_symbol`, `instrument_id`, `status`.
+- `research_backtest_results`: indexes по `research_run_id`, `backtest_run_id`, `strategy_id`,
+  `canonical_symbol`, `instrument_id`, `status`.
+- `backtest_equity_points`: index по `backtest_run_id`.
+- `backtest_trade_records`: indexes по `backtest_run_id`, `instrument_id`.
 - `audit_logs`: index по `entity_type, entity_id, ts`.
 - `system_events`: index по `event_type, ts`.
 
@@ -38,11 +47,15 @@ Decimal-значения описаны как `Numeric(38, 18)`. Временн
 - `get_instrument`, `get_instrument_by_canonical_symbol`, `list_instruments`
 - `save_contract_spec`, `get_contract_spec`
 - `save_candles`, `load_candles`
+- `save_research_run`, `get_research_run`, `list_research_runs`
+- `save_research_backtest_result`, `get_research_backtest_result`, `list_research_backtest_results`
+- `save_backtest_equity_points`, `load_backtest_equity_points`
+- `save_backtest_trade_records`, `load_backtest_trade_records`
 - базовые save-methods для signals, order intents, risk decisions, orders, executions, positions, events и
   backtest runs
 
 ## Следующий шаг
 
-Следующий storage-шаг — добавить PostgreSQL-backed integration tests, repository methods для выборок orders,
-executions и backtest runs, а затем подключить API endpoints к DB-backed storage. В MVP repository выбран
-sync SQLAlchemy, чтобы Alembic и runtime использовали один драйвер (`postgresql+psycopg`).
+Следующий storage-шаг — добавить PostgreSQL-backed integration tests и richer query methods для research
+reports/equity/trades. В MVP repository выбран sync SQLAlchemy, чтобы Alembic и runtime использовали один
+драйвер (`postgresql+psycopg`).

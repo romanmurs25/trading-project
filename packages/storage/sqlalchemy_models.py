@@ -176,6 +176,74 @@ class BacktestRunRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class ResearchRunRow(Base):
+    __tablename__ = "research_runs"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    strategy_id: Mapped[str] = mapped_column(String(128), index=True)
+    canonical_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128), index=True)
+    interval: Mapped[str] = mapped_column(String(16))
+    start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    parameter_grid: Mapped[dict[str, object]] = mapped_column(JSON)
+    data_quality_gate: Mapped[dict[str, object]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class ResearchBacktestResultRow(Base):
+    __tablename__ = "research_backtest_results"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    research_run_id: Mapped[str] = mapped_column(String(128), index=True)
+    backtest_run_id: Mapped[str | None] = mapped_column(String(128), index=True, nullable=True)
+    strategy_id: Mapped[str] = mapped_column(String(128), index=True)
+    canonical_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128), index=True)
+    interval: Mapped[str] = mapped_column(String(16))
+    start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    params: Mapped[dict[str, object]] = mapped_column(JSON)
+    metrics: Mapped[dict[str, object]] = mapped_column(JSON)
+    quality_report: Mapped[dict[str, object]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    error_message: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class BacktestEquityPointRow(Base):
+    __tablename__ = "backtest_equity_points"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    backtest_run_id: Mapped[str] = mapped_column(String(128), index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    equity: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    drawdown: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+
+
+class BacktestTradeRecordRow(Base):
+    __tablename__ = "backtest_trade_records"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    backtest_run_id: Mapped[str] = mapped_column(String(128), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128), index=True)
+    side: Mapped[str] = mapped_column(String(16))
+    entry_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    exit_ts: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    entry_price: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    exit_price: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    qty: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    gross_pnl: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    net_pnl: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    r_multiple: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    reason: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
 class AuditLogRow(Base):
     __tablename__ = "audit_logs"
     __table_args__ = (Index("ix_audit_logs_entity_ts", "entity_type", "entity_id", "ts"),)

@@ -31,6 +31,10 @@ trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m -
 trading data backfill-moex --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
 trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
 trading backtest run-db --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading research run --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --param opening_range_minutes=5,15
+trading research report --research-run-id <id> --format json
+trading research compare --research-run-id <id> --sort-by profit_factor
+trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
 trading db check-config
 ```
 
@@ -60,6 +64,9 @@ SQLite in-memory; production PostgreSQL schema должна оставаться
 - MOEX ISS instruments sync остаётся read-only и не требует credentials.
 - MOEX backfill CLI/API не делает внешний запрос без `--allow-network` / `allow_network=true`.
 - `backtest run-db` запускает сохранённые MOEX-свечи через PAPER-копию инструмента, не через live venue.
+- `ResearchRunner` принимает `broker_factory`; `trading_core` не должен импортировать `adapters.paper`.
+- Research workflow использует только сохранённые candles из storage и не делает external HTTP.
+- Data-quality gate должен выполняться до parameter sweep/backtest execution.
 - Kafka и Java не используются в MVP.
 - Kubernetes не используется в MVP.
 - Тесты не требуют реальных credentials и не отправляют live-ордера.

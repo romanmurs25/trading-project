@@ -17,6 +17,13 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.research.models import (
+    BacktestEquityPoint,
+    BacktestTradeRecord,
+    ResearchBacktestResult,
+    ResearchRun,
+    ResearchStatus,
+)
 
 
 @dataclass
@@ -32,6 +39,10 @@ class InMemoryStorage:
     positions: list[Position] = field(default_factory=list)
     journal_entries: list[TradeJournalEntry] = field(default_factory=list)
     backtest_runs: list[BacktestRun] = field(default_factory=list)
+    research_runs: list[ResearchRun] = field(default_factory=list)
+    research_backtest_results: list[ResearchBacktestResult] = field(default_factory=list)
+    backtest_equity_points: list[BacktestEquityPoint] = field(default_factory=list)
+    backtest_trade_records: list[BacktestTradeRecord] = field(default_factory=list)
     system_events: list[SystemEvent] = field(default_factory=list)
     audit_logs: list[AuditLog] = field(default_factory=list)
 
@@ -119,6 +130,69 @@ class InMemoryStorage:
 
     def save_backtest_run(self, run: BacktestRun) -> None:
         self.backtest_runs.append(run)
+
+    def save_research_run(self, run: ResearchRun) -> None:
+        self.research_runs = [existing for existing in self.research_runs if existing.id != run.id]
+        self.research_runs.append(run)
+
+    def get_research_run(self, run_id: str) -> ResearchRun | None:
+        return next((run for run in self.research_runs if run.id == run_id), None)
+
+    def list_research_runs(
+        self,
+        strategy_id: str | None = None,
+        canonical_symbol: str | None = None,
+        status: ResearchStatus | None = None,
+    ) -> list[ResearchRun]:
+        runs = self.research_runs
+        if strategy_id is not None:
+            runs = [run for run in runs if run.strategy_id == strategy_id]
+        if canonical_symbol is not None:
+            runs = [run for run in runs if run.canonical_symbol == canonical_symbol]
+        if status is not None:
+            runs = [run for run in runs if run.status == status]
+        return sorted(runs, key=lambda run: run.created_at)
+
+    def save_research_backtest_result(self, result: ResearchBacktestResult) -> None:
+        self.research_backtest_results = [
+            existing for existing in self.research_backtest_results if existing.id != result.id
+        ]
+        self.research_backtest_results.append(result)
+
+    def list_research_backtest_results(self, research_run_id: str) -> list[ResearchBacktestResult]:
+        return [
+            result
+            for result in self.research_backtest_results
+            if result.research_run_id == research_run_id
+        ]
+
+    def get_research_backtest_result(self, result_id: str) -> ResearchBacktestResult | None:
+        return next((result for result in self.research_backtest_results if result.id == result_id), None)
+
+    def save_backtest_equity_points(self, points: list[BacktestEquityPoint]) -> None:
+        point_ids = {point.id for point in points}
+        self.backtest_equity_points = [
+            point for point in self.backtest_equity_points if point.id not in point_ids
+        ]
+        self.backtest_equity_points.extend(points)
+
+    def load_backtest_equity_points(self, backtest_run_id: str) -> list[BacktestEquityPoint]:
+        return sorted(
+            (point for point in self.backtest_equity_points if point.backtest_run_id == backtest_run_id),
+            key=lambda point: point.ts,
+        )
+
+    def save_backtest_trade_records(self, records: list[BacktestTradeRecord]) -> None:
+        record_ids = {record.id for record in records}
+        self.backtest_trade_records = [
+            record for record in self.backtest_trade_records if record.id not in record_ids
+        ]
+        self.backtest_trade_records.extend(records)
+
+    def load_backtest_trade_records(self, backtest_run_id: str) -> list[BacktestTradeRecord]:
+        return [
+            record for record in self.backtest_trade_records if record.backtest_run_id == backtest_run_id
+        ]
 
     def save_system_event(self, event: SystemEvent) -> None:
         self.system_events.append(event)
