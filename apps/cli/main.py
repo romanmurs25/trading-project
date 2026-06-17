@@ -5,7 +5,9 @@ from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 import typer
+from adapters.demo.live_replay import replay_demo_candles_once
 from adapters.moex_iss.instruments import MoexIssInstrumentsService
+from adapters.moex_iss.live_polling import MoexIssPollingMarketDataAdapter
 from adapters.moex_iss.market_data_adapter import MoexIssMarketDataAdapter
 from adapters.paper.broker import PaperBroker
 from storage.in_memory import InMemoryStorage
@@ -20,6 +22,8 @@ from trading_core.config import AppConfig
 from trading_core.domain.enums import AssetClass, TradingMode, Venue
 from trading_core.domain.errors import DataValidationError
 from trading_core.domain.models import BacktestRun, Candle, ContractSpec, DomainModel, Instrument, RiskConfig
+from trading_core.live_data.ingestion import ReadOnlyMarketDataIngestionService
+from trading_core.live_data.models import MarketDataIngestionStatus, MarketDataSource
 from trading_core.market.calendar import MarketCalendarService
 from trading_core.market.continuous import build_continuous_futures_series
 from trading_core.market.execution_costs import BacktestExecutionCostConfig
@@ -42,6 +46,7 @@ risk_app = typer.Typer(help="Risk controls")
 backtest_app = typer.Typer(help="Backtesting")
 db_app = typer.Typer(help="Database helpers")
 data_app = typer.Typer(help="Market data helpers")
+live_data_app = typer.Typer(help="Read-only live market data")
 instruments_app = typer.Typer(help="Instrument registry")
 research_app = typer.Typer(help="Research workflows")
 market_app = typer.Typer(help="Market calendar helpers")
@@ -330,6 +335,155 @@ def sync_moex_instruments(
             "allow_network": allow_network,
             "instruments_count": instruments_count,
             "contract_specs_count": contract_specs_count,
+            "warnings": warnings,
+        }
+    )
+
+
+@live_data_app.command("state")
+def live_data_state(
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    service = ReadOnlyMarketDataIngestionService(storage=_resolve_storage(storage))
+    _echo_json(_model_json(service.state()))
+
+
+@live_data_app.command("events")
+def live_data_events(
+    source: str | None = typer.Option(None, "--source"),
+    canonical_symbol: str | None = typer.Option(None, "--canonical-symbol"),
+    interval: str | None = typer.Option(None, "--interval"),
+    limit: int = typer.Option(100, "--limit"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    events = target_storage.list_market_data_events(
+        source=MarketDataSource(source) if source is not None else None,
+        canonical_symbol=canonical_symbol,
+        interval=interval,
+        limit=limit,
+    )
+    _echo_json({"events": [_model_json(event) for event in events]})
+
+
+@live_data_app.command("candles")
+def live_data_candles(
+    source: str | None = typer.Option(None, "--source"),
+    canonical_symbol: str | None = typer.Option(None, "--canonical-symbol"),
+    interval: str | None = typer.Option(None, "--interval"),
+    limit: int = typer.Option(100, "--limit"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    service = ReadOnlyMarketDataIngestionService(storage=target_storage)
+    snapshots = target_storage.list_live_candle_snapshots(
+        source=MarketDataSource(source) if source is not None else None,
+        canonical_symbol=canonical_symbol,
+        interval=interval,
+        limit=limit,
+    )
+    _echo_json({"candles": [_model_json(service.with_current_freshness(snapshot)) for snapshot in snapshots]})
+
+
+@live_data_app.command("replay-demo")
+def live_data_replay_demo(
+    canonical_symbol: str = typer.Option("MOEX:SiH6", "--canonical-symbol"),
+    interval: str = typer.Option("1m", "--interval"),
+    count: int = typer.Option(20, "--count"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    result = replay_demo_candles_once(
+        storage=_resolve_storage(storage),
+        canonical_symbol=canonical_symbol,
+        interval=interval,
+        count=count,
+    )
+    _echo_json(
+        {
+            "status": "saved",
+            "source": result.run.source.value,
+            "run_id": result.run.id,
+            "read_only": result.run.read_only,
+            "allow_network": result.run.allow_network,
+            "snapshots_count": len(result.snapshots),
+            "latest_snapshot": _model_json(result.snapshots[0]) if result.snapshots else None,
+        }
+    )
+
+
+@live_data_app.command("poll-moex-once")
+def live_data_poll_moex_once(
+    symbol: str | None = typer.Option(None, "--symbol"),
+    instrument_id: str | None = typer.Option(None, "--instrument-id"),
+    canonical_symbol: str | None = typer.Option(None, "--canonical-symbol"),
+    interval: str = typer.Option("1m", "--interval"),
+    lookback_minutes: int = typer.Option(5, "--lookback-minutes"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    dry_run: bool = typer.Option(True, "--dry-run/--write"),
+    allow_network: bool = typer.Option(False, "--allow-network"),
+) -> None:
+    warnings: list[str] = []
+    instrument = _resolve_moex_backfill_instrument(canonical_symbol, symbol, instrument_id, storage)
+    if not allow_network:
+        warnings.append("external network is disabled by default; pass --allow-network explicitly")
+        _echo_json(
+            {
+                "status": "skipped",
+                "source": MarketDataSource.MOEX_ISS_POLLING.value,
+                "canonical_symbol": instrument.canonical_symbol,
+                "interval": interval,
+                "lookback_minutes": lookback_minutes,
+                "storage": storage,
+                "dry_run": dry_run,
+                "allow_network": allow_network,
+                "candles_loaded": 0,
+                "candles_saved": 0,
+                "warnings": warnings,
+            }
+        )
+        return
+
+    adapter = MoexIssPollingMarketDataAdapter(MoexIssMarketDataAdapter())
+    candles = asyncio.run(
+        adapter.poll_latest_candles_once(
+            instrument=instrument,
+            interval=interval,
+            end=datetime.now(UTC),
+            lookback_minutes=lookback_minutes,
+        )
+    )
+    candles_saved = 0
+    if not dry_run:
+        target_storage = _resolve_storage(storage)
+        service = ReadOnlyMarketDataIngestionService(storage=target_storage)
+        run = service.start_run(
+            source=MarketDataSource.MOEX_ISS_POLLING,
+            venue=instrument.venue,
+            instruments=[instrument.canonical_symbol],
+            interval=interval,
+            allow_network=True,
+            metadata={"source": "moex-iss-polling-once"},
+        )
+        service.ingest_candles(
+            run_id=run.id,
+            source=MarketDataSource.MOEX_ISS_POLLING,
+            instrument=instrument,
+            candles=candles,
+        )
+        service.stop_run(run.id, status=MarketDataIngestionStatus.STOPPED)
+        candles_saved = len(candles)
+    _echo_json(
+        {
+            "status": "dry_run" if dry_run else "saved",
+            "source": MarketDataSource.MOEX_ISS_POLLING.value,
+            "canonical_symbol": instrument.canonical_symbol,
+            "interval": interval,
+            "lookback_minutes": lookback_minutes,
+            "storage": storage,
+            "dry_run": dry_run,
+            "allow_network": allow_network,
+            "candles_loaded": len(candles),
+            "candles_saved": candles_saved,
             "warnings": warnings,
         }
     )
@@ -867,6 +1021,7 @@ app.add_typer(risk_app, name="risk")
 app.add_typer(backtest_app, name="backtest")
 app.add_typer(db_app, name="db")
 app.add_typer(data_app, name="data")
+app.add_typer(live_data_app, name="live-data")
 app.add_typer(instruments_app, name="instruments")
 app.add_typer(research_app, name="research")
 app.add_typer(market_app, name="market")

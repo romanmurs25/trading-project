@@ -29,16 +29,16 @@ export function ResearchReportPage() {
   return (
     <div className="page-stack">
       <div className="page-title">
-        <p className="eyebrow">Research report</p>
+        <p className="eyebrow">Отчёт исследования</p>
         <h2>{runId}</h2>
       </div>
-      <Link to={`/research/${encodeURIComponent(runId)}`}><Button variant="secondary">Back to run</Button></Link>
+      <Link to={`/research/${encodeURIComponent(runId)}`}><Button variant="secondary">Назад к прогону</Button></Link>
       {markdown ? (
-        <Card title="Markdown report">
+        <Card title="Markdown отчёт">
           <pre className="markdown-view">{markdown}</pre>
         </Card>
       ) : null}
-      <Card title="JSON report">
+      <Card title="JSON отчёт">
         <JsonBlock value={report.data} />
       </Card>
     </div>

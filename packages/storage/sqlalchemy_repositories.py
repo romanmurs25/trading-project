@@ -20,6 +20,15 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.live_data.models import (
+    LiveCandleSnapshot,
+    MarketDataEvent,
+    MarketDataEventType,
+    MarketDataFreshness,
+    MarketDataIngestionRun,
+    MarketDataIngestionStatus,
+    MarketDataSource,
+)
 from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
 from trading_core.market.roll import RollEvent
 from trading_core.market.sessions import MarketSession, SessionType
@@ -42,6 +51,9 @@ from storage.sqlalchemy_models import (
     ContractSpecRow,
     ExecutionRow,
     InstrumentRow,
+    LiveCandleSnapshotRow,
+    MarketDataEventRow,
+    MarketDataIngestionRunRow,
     MarketSessionRow,
     OrderIntentRow,
     OrderRow,
@@ -489,6 +501,118 @@ class SQLAlchemyStorage:
         with self.session_factory() as session:
             return [_roll_event_from_row(row) for row in session.scalars(statement).all()]
 
+    def save_market_data_ingestion_run(self, run: MarketDataIngestionRun) -> None:
+        with self.session_factory.begin() as session:
+            session.merge(_market_data_ingestion_run_row(run))
+
+    def get_market_data_ingestion_run(self, run_id: str) -> MarketDataIngestionRun | None:
+        with self.session_factory() as session:
+            row = session.scalar(
+                select(MarketDataIngestionRunRow).where(MarketDataIngestionRunRow.id == run_id)
+            )
+            return _market_data_ingestion_run_from_row(row) if row is not None else None
+
+    def list_market_data_ingestion_runs(
+        self,
+        source: MarketDataSource | None = None,
+        status: MarketDataIngestionStatus | None = None,
+        limit: int = 100,
+    ) -> list[MarketDataIngestionRun]:
+        statement = select(MarketDataIngestionRunRow)
+        if source is not None:
+            statement = statement.where(MarketDataIngestionRunRow.source == source.value)
+        if status is not None:
+            statement = statement.where(MarketDataIngestionRunRow.status == status.value)
+        statement = statement.order_by(MarketDataIngestionRunRow.started_at.desc()).limit(limit)
+        with self.session_factory() as session:
+            return [_market_data_ingestion_run_from_row(row) for row in session.scalars(statement).all()]
+
+    def save_market_data_event(self, event: MarketDataEvent) -> None:
+        with self.session_factory.begin() as session:
+            session.add(_market_data_event_row(event))
+
+    def save_market_data_events(self, events: list[MarketDataEvent]) -> None:
+        with self.session_factory.begin() as session:
+            for event in events:
+                session.add(_market_data_event_row(event))
+
+    def list_market_data_events(
+        self,
+        source: MarketDataSource | None = None,
+        instrument_id: str | None = None,
+        canonical_symbol: str | None = None,
+        interval: str | None = None,
+        limit: int = 500,
+    ) -> list[MarketDataEvent]:
+        statement = select(MarketDataEventRow)
+        if source is not None:
+            statement = statement.where(MarketDataEventRow.source == source.value)
+        if instrument_id is not None:
+            statement = statement.where(MarketDataEventRow.instrument_id == instrument_id)
+        if canonical_symbol is not None:
+            statement = statement.where(MarketDataEventRow.canonical_symbol == canonical_symbol)
+        if interval is not None:
+            statement = statement.where(MarketDataEventRow.interval == interval)
+        statement = statement.order_by(MarketDataEventRow.received_at.desc()).limit(limit)
+        with self.session_factory() as session:
+            return [_market_data_event_from_row(row) for row in session.scalars(statement).all()]
+
+    def save_live_candle_snapshot(self, snapshot: LiveCandleSnapshot) -> None:
+        with self.session_factory.begin() as session:
+            existing = session.scalar(
+                select(LiveCandleSnapshotRow).where(
+                    LiveCandleSnapshotRow.source == snapshot.source.value,
+                    LiveCandleSnapshotRow.venue == snapshot.venue.value,
+                    LiveCandleSnapshotRow.instrument_id == snapshot.instrument_id,
+                    LiveCandleSnapshotRow.interval == snapshot.interval,
+                    LiveCandleSnapshotRow.ts_start == snapshot.ts_start,
+                )
+            )
+            if existing is None:
+                session.add(_live_candle_snapshot_row(snapshot))
+            else:
+                _update_live_candle_snapshot_row(existing, snapshot)
+
+    def save_live_candle_snapshots(self, snapshots: list[LiveCandleSnapshot]) -> None:
+        for snapshot in snapshots:
+            self.save_live_candle_snapshot(snapshot)
+
+    def list_live_candle_snapshots(
+        self,
+        source: MarketDataSource | None = None,
+        instrument_id: str | None = None,
+        canonical_symbol: str | None = None,
+        interval: str | None = None,
+        limit: int = 500,
+    ) -> list[LiveCandleSnapshot]:
+        statement = select(LiveCandleSnapshotRow)
+        if source is not None:
+            statement = statement.where(LiveCandleSnapshotRow.source == source.value)
+        if instrument_id is not None:
+            statement = statement.where(LiveCandleSnapshotRow.instrument_id == instrument_id)
+        if canonical_symbol is not None:
+            statement = statement.where(LiveCandleSnapshotRow.canonical_symbol == canonical_symbol)
+        if interval is not None:
+            statement = statement.where(LiveCandleSnapshotRow.interval == interval)
+        statement = statement.order_by(
+            LiveCandleSnapshotRow.ts_start.desc(),
+            LiveCandleSnapshotRow.updated_at.desc(),
+        ).limit(limit)
+        with self.session_factory() as session:
+            return [_live_candle_snapshot_from_row(row) for row in session.scalars(statement).all()]
+
+    def get_latest_live_candle_snapshot(
+        self,
+        canonical_symbol: str,
+        interval: str,
+    ) -> LiveCandleSnapshot | None:
+        snapshots = self.list_live_candle_snapshots(
+            canonical_symbol=canonical_symbol,
+            interval=interval,
+            limit=1,
+        )
+        return snapshots[0] if snapshots else None
+
     def save_system_event(self, event: SystemEvent) -> None:
         with self.session_factory.begin() as session:
             session.merge(
@@ -877,6 +1001,152 @@ def _roll_event_from_row(row: RollEventRow) -> RollEvent:
         to_instrument_id=row.to_instrument_id,
         roll_date=row.roll_date,
         reason=row.reason,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _market_data_ingestion_run_row(run: MarketDataIngestionRun) -> MarketDataIngestionRunRow:
+    payload = run.model_dump(mode="json")
+    return MarketDataIngestionRunRow(
+        id=run.id,
+        source=run.source.value,
+        status=run.status.value,
+        venue=run.venue.value,
+        instruments=payload["instruments"],
+        interval=run.interval,
+        started_at=run.started_at,
+        stopped_at=run.stopped_at,
+        last_event_at=run.last_event_at,
+        events_count=run.events_count,
+        candles_count=run.candles_count,
+        errors_count=run.errors_count,
+        read_only=run.read_only,
+        allow_network=run.allow_network,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _market_data_ingestion_run_from_row(row: MarketDataIngestionRunRow) -> MarketDataIngestionRun:
+    return MarketDataIngestionRun(
+        id=row.id,
+        source=MarketDataSource(row.source),
+        status=MarketDataIngestionStatus(row.status),
+        venue=Venue(row.venue),
+        instruments=list(row.instruments or []),
+        interval=row.interval,
+        started_at=_aware(row.started_at),
+        stopped_at=_aware(row.stopped_at) if row.stopped_at is not None else None,
+        last_event_at=_aware(row.last_event_at) if row.last_event_at is not None else None,
+        events_count=row.events_count,
+        candles_count=row.candles_count,
+        errors_count=row.errors_count,
+        read_only=row.read_only,
+        allow_network=row.allow_network,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _market_data_event_row(event: MarketDataEvent) -> MarketDataEventRow:
+    payload = event.model_dump(mode="json")
+    return MarketDataEventRow(
+        id=event.id,
+        source=event.source.value,
+        event_type=event.event_type.value,
+        venue=event.venue.value,
+        instrument_id=event.instrument_id,
+        canonical_symbol=event.canonical_symbol,
+        interval=event.interval,
+        ts=event.ts,
+        received_at=event.received_at,
+        payload=payload["payload"],
+        metadata_json=payload["metadata"],
+    )
+
+
+def _market_data_event_from_row(row: MarketDataEventRow) -> MarketDataEvent:
+    return MarketDataEvent(
+        id=row.id,
+        source=MarketDataSource(row.source),
+        event_type=MarketDataEventType(row.event_type),
+        venue=Venue(row.venue),
+        instrument_id=row.instrument_id,
+        canonical_symbol=row.canonical_symbol,
+        interval=row.interval,
+        ts=_aware(row.ts),
+        received_at=_aware(row.received_at),
+        payload=dict(row.payload or {}),
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _live_candle_snapshot_row(snapshot: LiveCandleSnapshot) -> LiveCandleSnapshotRow:
+    payload = snapshot.model_dump(mode="json")
+    return LiveCandleSnapshotRow(
+        id=snapshot.id,
+        source=snapshot.source.value,
+        venue=snapshot.venue.value,
+        instrument_id=snapshot.instrument_id,
+        canonical_symbol=snapshot.canonical_symbol,
+        interval=snapshot.interval,
+        ts_start=snapshot.ts_start,
+        ts_end=snapshot.ts_end,
+        open=snapshot.open,
+        high=snapshot.high,
+        low=snapshot.low,
+        close=snapshot.close,
+        volume=snapshot.volume,
+        value=snapshot.value,
+        trades_count=snapshot.trades_count,
+        updated_at=snapshot.updated_at,
+        is_closed=snapshot.is_closed,
+        freshness=snapshot.freshness.value,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _update_live_candle_snapshot_row(row: LiveCandleSnapshotRow, snapshot: LiveCandleSnapshot) -> None:
+    payload = snapshot.model_dump(mode="json")
+    row.id = snapshot.id
+    row.source = snapshot.source.value
+    row.venue = snapshot.venue.value
+    row.instrument_id = snapshot.instrument_id
+    row.canonical_symbol = snapshot.canonical_symbol
+    row.interval = snapshot.interval
+    row.ts_start = snapshot.ts_start
+    row.ts_end = snapshot.ts_end
+    row.open = snapshot.open
+    row.high = snapshot.high
+    row.low = snapshot.low
+    row.close = snapshot.close
+    row.volume = snapshot.volume
+    row.value = snapshot.value
+    row.trades_count = snapshot.trades_count
+    row.updated_at = snapshot.updated_at
+    row.is_closed = snapshot.is_closed
+    row.freshness = snapshot.freshness.value
+    row.metadata_json = payload["metadata"]
+
+
+def _live_candle_snapshot_from_row(row: LiveCandleSnapshotRow) -> LiveCandleSnapshot:
+    return LiveCandleSnapshot(
+        id=row.id,
+        source=MarketDataSource(row.source),
+        venue=Venue(row.venue),
+        instrument_id=row.instrument_id,
+        canonical_symbol=row.canonical_symbol,
+        interval=row.interval,
+        ts_start=_aware(row.ts_start),
+        ts_end=_aware(row.ts_end),
+        open=row.open,
+        high=row.high,
+        low=row.low,
+        close=row.close,
+        volume=row.volume,
+        value=row.value,
+        trades_count=row.trades_count,
+        updated_at=_aware(row.updated_at),
+        is_closed=row.is_closed,
+        freshness=MarketDataFreshness(row.freshness),
         metadata=dict(row.metadata_json or {}),
     )
 

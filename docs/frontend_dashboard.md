@@ -1,6 +1,7 @@
 # Frontend Research Dashboard
 
-Cycle 7 добавляет read-only frontend research dashboard внутри существующего monorepo:
+Cycle 7 добавил read-only frontend research dashboard внутри существующего monorepo. Cycle 8 расширяет его
+страницей read-only market data и русскоязычной оболочкой:
 
 ```text
 apps/web
@@ -26,7 +27,7 @@ Frontend:
 Видимый safety banner:
 
 ```text
-Read-only research dashboard. No live trading. No broker execution.
+Только чтение: исследование и рыночные данные. Live trading и broker execution отключены.
 ```
 
 ## Запуск
@@ -60,16 +61,17 @@ VITE_API_BASE_URL=http://localhost:8000
 
 ## Pages
 
-- Dashboard: backend health, basic counts, safety posture.
-- Instruments: searchable registry table and detail page.
-- Data Quality: session-aware report request and metrics.
-- Market Sessions: stored session table with venue/market filters.
-- Futures Chain: chain and selected front contract.
-- Continuous Series: stored continuous series, components and roll events.
-- Research Runs: read-only list of stored research runs.
-- Research Run Detail: params, results, equity/drawdown charts and trades.
-- Research Report: JSON/markdown-like report view.
-- Settings: API base URL, health and safety constraints.
+- Обзор: backend health, базовые счётчики, live-data count и safety posture.
+- Инструменты: searchable registry table and detail page.
+- Качество данных: session-aware report request and metrics.
+- Live Data: read-only ingestion state, demo replay, latest snapshots and events.
+- Рыночные сессии: stored session table with venue/market filters.
+- Фьючерсная цепочка: chain and selected front contract.
+- Непрерывные серии: stored continuous series, components and roll events.
+- Исследования: read-only list of stored research runs.
+- Детали исследования: params, results, equity/drawdown charts and trades.
+- Отчёт исследования: JSON/markdown-like report view.
+- Настройки: API base URL, health and safety constraints.
 
 ## Decimal handling
 
@@ -78,8 +80,27 @@ Charts convert Decimal strings to JS `number` only for visualization.
 
 ## API contract
 
-Frontend API types are handwritten in `apps/web/src/api/types.ts` and must match backend response field names.
-Cycle 8 should generate frontend types from the backend OpenAPI schema to reduce contract drift.
+Backend OpenAPI schema is exported to:
+
+```text
+apps/web/src/api/openapi.json
+```
+
+Generated TypeScript declarations live in:
+
+```text
+apps/web/src/api/generated.ts
+```
+
+Commands:
+
+```bash
+python3 scripts/export_openapi.py
+npm --prefix apps/web run api:types
+```
+
+`apps/web/src/api/types.ts` пока остаётся pragmatic handwritten API layer, но generated declarations дают
+контрактную базу для постепенного уменьшения drift.
 
 ## Known limitations
 
@@ -89,7 +110,7 @@ Cycle 8 should generate frontend types from the backend OpenAPI schema to reduce
 - Нет WebSocket.
 - Нет frontend-triggered backfill/sync в MVP.
 - In-memory backend data disappears on restart.
-- Data shape пока pragmatic, без сгенерированного OpenAPI client.
+- Data shape пока pragmatic, generated OpenAPI declarations есть, полноценный generated client ещё не внедрён.
 
 ## Future repo split
 

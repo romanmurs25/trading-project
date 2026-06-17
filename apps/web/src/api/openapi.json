@@ -1,0 +1,2230 @@
+{
+  "components": {
+    "schemas": {
+      "AssetClass": {
+        "enum": [
+          "FUTURES",
+          "STOCK",
+          "CRYPTO",
+          "FX",
+          "INDEX",
+          "COMMODITY"
+        ],
+        "title": "AssetClass",
+        "type": "string"
+      },
+      "BuildContinuousRequest": {
+        "properties": {
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "interval": {
+            "default": "1m",
+            "title": "Interval",
+            "type": "string"
+          },
+          "roll_days_before_expiry": {
+            "default": 5,
+            "title": "Roll Days Before Expiry",
+            "type": "integer"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          },
+          "underlying": {
+            "title": "Underlying",
+            "type": "string"
+          },
+          "write": {
+            "default": false,
+            "title": "Write",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "underlying",
+          "from",
+          "to"
+        ],
+        "title": "BuildContinuousRequest",
+        "type": "object"
+      },
+      "DemoReplayRequest": {
+        "properties": {
+          "canonical_symbol": {
+            "default": "MOEX:SiH6",
+            "title": "Canonical Symbol",
+            "type": "string"
+          },
+          "count": {
+            "default": 20,
+            "title": "Count",
+            "type": "integer"
+          },
+          "interval": {
+            "default": "1m",
+            "title": "Interval",
+            "type": "string"
+          }
+        },
+        "title": "DemoReplayRequest",
+        "type": "object"
+      },
+      "GenerateSessionsRequest": {
+        "properties": {
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "market": {
+            "default": "forts",
+            "title": "Market",
+            "type": "string"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          },
+          "venue": {
+            "$ref": "#/components/schemas/Venue",
+            "default": "MOEX"
+          },
+          "write": {
+            "default": false,
+            "title": "Write",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "GenerateSessionsRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "MarketDataSource": {
+        "enum": [
+          "DEMO_REPLAY",
+          "MOEX_ISS_POLLING",
+          "MANUAL_IMPORT"
+        ],
+        "title": "MarketDataSource",
+        "type": "string"
+      },
+      "MoexBackfillRequest": {
+        "properties": {
+          "allow_network": {
+            "default": false,
+            "title": "Allow Network",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "instrument_id": {
+            "title": "Instrument Id",
+            "type": "string"
+          },
+          "interval": {
+            "default": "1m",
+            "title": "Interval",
+            "type": "string"
+          },
+          "storage": {
+            "default": "in-memory",
+            "title": "Storage",
+            "type": "string"
+          },
+          "symbol": {
+            "title": "Symbol",
+            "type": "string"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "symbol",
+          "instrument_id",
+          "from",
+          "to"
+        ],
+        "title": "MoexBackfillRequest",
+        "type": "object"
+      },
+      "MoexBackfillResponse": {
+        "properties": {
+          "candles_loaded": {
+            "title": "Candles Loaded",
+            "type": "integer"
+          },
+          "candles_saved": {
+            "title": "Candles Saved",
+            "type": "integer"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "candles_loaded",
+          "candles_saved",
+          "dry_run",
+          "warnings"
+        ],
+        "title": "MoexBackfillResponse",
+        "type": "object"
+      },
+      "MoexInstrumentSyncRequest": {
+        "properties": {
+          "allow_network": {
+            "default": false,
+            "title": "Allow Network",
+            "type": "boolean"
+          },
+          "asset_class": {
+            "default": "futures",
+            "title": "Asset Class",
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "storage": {
+            "default": "in-memory",
+            "title": "Storage",
+            "type": "string"
+          }
+        },
+        "title": "MoexInstrumentSyncRequest",
+        "type": "object"
+      },
+      "MoexInstrumentSyncResponse": {
+        "properties": {
+          "allow_network": {
+            "title": "Allow Network",
+            "type": "boolean"
+          },
+          "contract_specs_count": {
+            "title": "Contract Specs Count",
+            "type": "integer"
+          },
+          "dry_run": {
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "instruments_count": {
+            "title": "Instruments Count",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "status",
+          "instruments_count",
+          "contract_specs_count",
+          "dry_run",
+          "allow_network",
+          "warnings"
+        ],
+        "title": "MoexInstrumentSyncResponse",
+        "type": "object"
+      },
+      "PollMoexOnceRequest": {
+        "properties": {
+          "allow_network": {
+            "default": false,
+            "title": "Allow Network",
+            "type": "boolean"
+          },
+          "canonical_symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Symbol"
+          },
+          "dry_run": {
+            "default": true,
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "instrument_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instrument Id"
+          },
+          "interval": {
+            "default": "1m",
+            "title": "Interval",
+            "type": "string"
+          },
+          "lookback_minutes": {
+            "default": 5,
+            "title": "Lookback Minutes",
+            "type": "integer"
+          },
+          "symbol": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Symbol"
+          }
+        },
+        "title": "PollMoexOnceRequest",
+        "type": "object"
+      },
+      "ResearchRunRequest": {
+        "properties": {
+          "canonical_symbol": {
+            "title": "Canonical Symbol",
+            "type": "string"
+          },
+          "fail_on_data_quality": {
+            "default": true,
+            "title": "Fail On Data Quality",
+            "type": "boolean"
+          },
+          "from": {
+            "format": "date",
+            "title": "From",
+            "type": "string"
+          },
+          "initial_cash": {
+            "default": "100000",
+            "title": "Initial Cash",
+            "type": "string"
+          },
+          "interval": {
+            "default": "1m",
+            "title": "Interval",
+            "type": "string"
+          },
+          "max_combinations": {
+            "default": 500,
+            "title": "Max Combinations",
+            "type": "integer"
+          },
+          "parameter_grid": {
+            "additionalProperties": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Parameter Grid",
+            "type": "object"
+          },
+          "strategy_id": {
+            "title": "Strategy Id",
+            "type": "string"
+          },
+          "to": {
+            "format": "date",
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "strategy_id",
+          "canonical_symbol",
+          "from",
+          "to"
+        ],
+        "title": "ResearchRunRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "Venue": {
+        "enum": [
+          "MOEX",
+          "BYBIT",
+          "PAPER"
+        ],
+        "title": "Venue",
+        "type": "string"
+      }
+    }
+  },
+  "info": {
+    "title": "Safety-first Trading Platform",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/backtests": {
+      "get": {
+        "operationId": "list_backtests_api_backtests_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "title": "Response List Backtests Api Backtests Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Backtests",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/api/backtests/run": {
+      "post": {
+        "operationId": "run_backtest_api_backtests_run_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Backtest Api Backtests Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Run Backtest",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/api/backtests/{backtest_id}": {
+      "get": {
+        "operationId": "get_backtest_api_backtests__backtest_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "backtest_id",
+            "required": true,
+            "schema": {
+              "title": "Backtest Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Backtest Api Backtests  Backtest Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Backtest",
+        "tags": [
+          "backtests"
+        ]
+      }
+    },
+    "/api/continuous-series": {
+      "get": {
+        "operationId": "list_continuous_series_api_continuous_series_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "underlying_symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Underlying Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interval"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Continuous Series Api Continuous Series Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Continuous Series",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/continuous-series/{series_id}/components": {
+      "get": {
+        "operationId": "list_continuous_series_components_api_continuous_series__series_id__components_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "series_id",
+            "required": true,
+            "schema": {
+              "title": "Series Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Continuous Series Components Api Continuous Series  Series Id  Components Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Continuous Series Components",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/data/continuous/build": {
+      "post": {
+        "operationId": "data_build_continuous_api_data_continuous_build_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BuildContinuousRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Data Build Continuous Api Data Continuous Build Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Data Build Continuous",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/data/quality/session-aware": {
+      "get": {
+        "operationId": "data_quality_session_aware_api_data_quality_session_aware_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "canonical_symbol",
+            "required": true,
+            "schema": {
+              "title": "Canonical Symbol",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "1m",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "From",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "To",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Data Quality Session Aware Api Data Quality Session Aware Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Data Quality Session Aware",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/futures/chain": {
+      "get": {
+        "operationId": "futures_chain_api_futures_chain_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "underlying",
+            "required": true,
+            "schema": {
+              "title": "Underlying",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Futures Chain Api Futures Chain Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Futures Chain",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/futures/select-front": {
+      "get": {
+        "operationId": "futures_select_front_api_futures_select_front_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "underlying",
+            "required": true,
+            "schema": {
+              "title": "Underlying",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "as_of",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "As Of",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "roll_days_before_expiry",
+            "required": false,
+            "schema": {
+              "default": 5,
+              "title": "Roll Days Before Expiry",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Futures Select Front Api Futures Select Front Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Futures Select Front",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/instruments": {
+      "get": {
+        "operationId": "list_instruments_api_instruments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "venue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Venue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Venue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "asset_class",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AssetClass"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Asset Class"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_active",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Is Active"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Instruments Api Instruments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Instruments",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/instruments/by-symbol/{canonical_symbol}": {
+      "get": {
+        "operationId": "get_instrument_by_symbol_api_instruments_by_symbol__canonical_symbol__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "canonical_symbol",
+            "required": true,
+            "schema": {
+              "title": "Canonical Symbol",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Instrument By Symbol Api Instruments By Symbol  Canonical Symbol  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instrument By Symbol",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/instruments/sync/moex": {
+      "post": {
+        "operationId": "sync_moex_instruments_api_instruments_sync_moex_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoexInstrumentSyncRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoexInstrumentSyncResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Moex Instruments",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/instruments/{instrument_id}": {
+      "get": {
+        "operationId": "get_instrument_api_instruments__instrument_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "instrument_id",
+            "required": true,
+            "schema": {
+              "title": "Instrument Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Instrument Api Instruments  Instrument Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Instrument",
+        "tags": [
+          "instruments"
+        ]
+      }
+    },
+    "/api/journal": {
+      "get": {
+        "operationId": "list_journal_api_journal_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Journal Api Journal Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Journal",
+        "tags": [
+          "journal"
+        ]
+      }
+    },
+    "/api/live-data/candles": {
+      "get": {
+        "operationId": "live_data_candles_api_live_data_candles_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MarketDataSource"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "canonical_symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Canonical Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interval"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Live Data Candles Api Live Data Candles Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Data Candles",
+        "tags": [
+          "live-data"
+        ]
+      }
+    },
+    "/api/live-data/events": {
+      "get": {
+        "operationId": "live_data_events_api_live_data_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/MarketDataSource"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "in": "query",
+            "name": "canonical_symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Canonical Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Interval"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Live Data Events Api Live Data Events Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Data Events",
+        "tags": [
+          "live-data"
+        ]
+      }
+    },
+    "/api/live-data/poll/moex-once": {
+      "post": {
+        "operationId": "live_data_poll_moex_once_api_live_data_poll_moex_once_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PollMoexOnceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Live Data Poll Moex Once Api Live Data Poll Moex Once Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Data Poll Moex Once",
+        "tags": [
+          "live-data"
+        ]
+      }
+    },
+    "/api/live-data/replay-demo": {
+      "post": {
+        "operationId": "live_data_replay_demo_api_live_data_replay_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoReplayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Live Data Replay Demo Api Live Data Replay Demo Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Live Data Replay Demo",
+        "tags": [
+          "live-data"
+        ]
+      }
+    },
+    "/api/live-data/state": {
+      "get": {
+        "operationId": "live_data_state_api_live_data_state_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Live Data State Api Live Data State Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Live Data State",
+        "tags": [
+          "live-data"
+        ]
+      }
+    },
+    "/api/market-data/backfill/moex": {
+      "post": {
+        "operationId": "backfill_moex_api_market_data_backfill_moex_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoexBackfillRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoexBackfillResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Backfill Moex",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/api/market-data/candles": {
+      "get": {
+        "operationId": "list_candles_api_market_data_candles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": {
+                      "type": "string"
+                    },
+                    "type": "object"
+                  },
+                  "title": "Response List Candles Api Market Data Candles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Candles",
+        "tags": [
+          "market-data"
+        ]
+      }
+    },
+    "/api/market/sessions": {
+      "get": {
+        "operationId": "list_market_sessions_api_market_sessions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "venue",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Venue"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Venue"
+            }
+          },
+          {
+            "in": "query",
+            "name": "market",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Market"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Market Sessions Api Market Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Market Sessions",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/market/sessions/generate": {
+      "post": {
+        "operationId": "generate_market_sessions_api_market_sessions_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateSessionsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Generate Market Sessions Api Market Sessions Generate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Market Sessions",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "operationId": "list_orders_api_orders_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Orders Api Orders Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Orders",
+        "tags": [
+          "orders"
+        ]
+      }
+    },
+    "/api/research/run": {
+      "post": {
+        "operationId": "run_research_api_research_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResearchRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Research Api Research Run Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Research",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs": {
+      "get": {
+        "operationId": "list_research_runs_api_research_runs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "strategy_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "canonical_symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Canonical Symbol"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Research Runs Api Research Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Research Runs",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs/{run_id}": {
+      "get": {
+        "operationId": "get_research_run_api_research_runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Research Run Api Research Runs  Run Id  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Research Run",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs/{run_id}/compare": {
+      "get": {
+        "operationId": "compare_research_results_api_research_runs__run_id__compare_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort_by",
+            "required": false,
+            "schema": {
+              "default": "profit_factor",
+              "title": "Sort By",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Compare Research Results Api Research Runs  Run Id  Compare Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare Research Results",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs/{run_id}/equity": {
+      "get": {
+        "operationId": "get_research_equity_api_research_runs__run_id__equity_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Research Equity Api Research Runs  Run Id  Equity Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Research Equity",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs/{run_id}/report": {
+      "get": {
+        "operationId": "get_research_report_api_research_runs__run_id__report_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Research Report Api Research Runs  Run Id  Report Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Research Report",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs/{run_id}/results": {
+      "get": {
+        "operationId": "list_research_results_api_research_runs__run_id__results_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Research Results Api Research Runs  Run Id  Results Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Research Results",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/research/runs/{run_id}/trades": {
+      "get": {
+        "operationId": "get_research_trades_api_research_runs__run_id__trades_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Research Trades Api Research Runs  Run Id  Trades Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Research Trades",
+        "tags": [
+          "research"
+        ]
+      }
+    },
+    "/api/risk/kill-switch/activate": {
+      "post": {
+        "operationId": "activate_kill_switch_api_risk_kill_switch_activate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Activate Kill Switch Api Risk Kill Switch Activate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Activate Kill Switch",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/api/risk/kill-switch/deactivate": {
+      "post": {
+        "operationId": "deactivate_kill_switch_api_risk_kill_switch_deactivate_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Deactivate Kill Switch Api Risk Kill Switch Deactivate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Deactivate Kill Switch",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/api/risk/state": {
+      "get": {
+        "operationId": "get_risk_state_api_risk_state_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Risk State Api Risk State Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Risk State",
+        "tags": [
+          "risk"
+        ]
+      }
+    },
+    "/api/roll-events": {
+      "get": {
+        "operationId": "list_roll_events_api_roll_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "underlying_symbol",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Underlying Symbol"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response List Roll Events Api Roll Events Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Roll Events",
+        "tags": [
+          "market-realism"
+        ]
+      }
+    },
+    "/api/strategies": {
+      "get": {
+        "operationId": "list_strategies_api_strategies_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Response List Strategies Api Strategies Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Strategies",
+        "tags": [
+          "strategies"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Health Health Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    }
+  }
+}

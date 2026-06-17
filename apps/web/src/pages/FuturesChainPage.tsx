@@ -39,39 +39,39 @@ export function FuturesChainPage() {
   return (
     <div className="page-stack">
       <div className="page-title">
-        <p className="eyebrow">Contracts</p>
-        <h2>Futures Chain</h2>
+        <p className="eyebrow">Контракты</p>
+        <h2>Фьючерсная цепочка</h2>
       </div>
-      <Card title="Selection">
+      <Card title="Выбор">
         <form className="form-grid" onSubmit={submit}>
           <label>
             Underlying
             <input className="field" value={form.underlying} onChange={(event) => setForm({ ...form, underlying: event.target.value })} />
           </label>
           <label>
-            As-of date
+            Дата
             <input className="field" type="date" value={form.asOf} onChange={(event) => setForm({ ...form, asOf: event.target.value })} />
           </label>
           <label>
             Roll days
             <input className="field" value={form.rollDays} onChange={(event) => setForm({ ...form, rollDays: event.target.value })} />
           </label>
-          <Button type="submit">Refresh</Button>
+          <Button type="submit">Обновить</Button>
         </form>
       </Card>
       {front.data ? (
-        <Card title="Selected front contract">
+        <Card title="Выбранный front contract">
           <dl className="details-grid">
             <div>
               <dt>Canonical symbol</dt>
               <dd>{front.data.selected_canonical_symbol}</dd>
             </div>
             <div>
-              <dt>Reason</dt>
+              <dt>Причина</dt>
               <dd>{front.data.reason}</dd>
             </div>
             <div>
-              <dt>Days to expiry</dt>
+              <dt>Дней до экспирации</dt>
               <dd>{front.data.days_to_expiry}</dd>
             </div>
           </dl>
@@ -81,7 +81,7 @@ export function FuturesChainPage() {
       {chain.error ? <ErrorState error={chain.error} /> : null}
       {front.error ? <ErrorState error={front.error} /> : null}
       {chain.data?.contracts.length === 0 ? (
-        <EmptyState title="No contracts" message="Store MOEX futures instruments and contract specs first." />
+        <EmptyState title="Контрактов нет" message="Сначала сохраните MOEX futures instruments и contract specs." />
       ) : null}
       {chain.data && chain.data.contracts.length > 0 ? (
         <Table
@@ -90,8 +90,8 @@ export function FuturesChainPage() {
           columns={[
             { key: "canonical", header: "Canonical", render: (row) => row.canonical_symbol },
             { key: "native", header: "Native", render: (row) => row.native_symbol },
-            { key: "expiry", header: "Expiry", render: (row) => row.expiry_date ?? "—" },
-            { key: "active", header: "Active", render: (row) => <Badge tone={row.is_active ? "success" : "neutral"}>{row.is_active ? "yes" : "no"}</Badge> },
+            { key: "expiry", header: "Экспирация", render: (row) => row.expiry_date ?? "—" },
+            { key: "active", header: "Активен", render: (row) => <Badge tone={row.is_active ? "success" : "neutral"}>{row.is_active ? "да" : "нет"}</Badge> },
           ]}
         />
       ) : null}

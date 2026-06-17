@@ -34,7 +34,7 @@ export function MarketSessionsPage() {
     <div className="page-stack">
       <div className="page-title">
         <p className="eyebrow">MOEX</p>
-        <h2>Market Sessions</h2>
+        <h2>Рыночные сессии</h2>
       </div>
       <Card>
         <div className="filter-row">
@@ -43,18 +43,18 @@ export function MarketSessionsPage() {
         </div>
       </Card>
       {rows.length === 0 ? (
-        <EmptyState title="No sessions" message="Generate sessions from CLI or API preview before storing them." />
+        <EmptyState title="Сессий нет" message="Сгенерируйте сессии через CLI/API перед сохранением." />
       ) : (
         <Table
           rows={rows}
           getRowKey={(row) => row.id}
           columns={[
-            { key: "date", header: "Date", render: (row) => row.session_date },
-            { key: "type", header: "Type", render: (row) => row.session_type },
-            { key: "start", header: "Start", render: (row) => <DateTimeCell value={row.start} /> },
-            { key: "end", header: "End", render: (row) => <DateTimeCell value={row.end} /> },
-            { key: "trading", header: "Trading", render: (row) => <Badge tone={row.is_trading ? "success" : "neutral"}>{row.is_trading ? "yes" : "no"}</Badge> },
-            { key: "tz", header: "Timezone", render: (row) => row.timezone },
+            { key: "date", header: "Дата", render: (row) => row.session_date },
+            { key: "type", header: "Тип", render: (row) => row.session_type },
+            { key: "start", header: "Начало", render: (row) => <DateTimeCell value={row.start} /> },
+            { key: "end", header: "Конец", render: (row) => <DateTimeCell value={row.end} /> },
+            { key: "trading", header: "Торговая", render: (row) => <Badge tone={row.is_trading ? "success" : "neutral"}>{row.is_trading ? "да" : "нет"}</Badge> },
+            { key: "tz", header: "Часовой пояс", render: (row) => row.timezone },
           ]}
         />
       )}

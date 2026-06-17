@@ -17,6 +17,13 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.live_data.models import (
+    LiveCandleSnapshot,
+    MarketDataEvent,
+    MarketDataIngestionRun,
+    MarketDataIngestionStatus,
+    MarketDataSource,
+)
 from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
 from trading_core.market.roll import RollEvent
 from trading_core.market.sessions import MarketSession
@@ -50,6 +57,9 @@ class InMemoryStorage:
     continuous_series: list[ContinuousSeries] = field(default_factory=list)
     continuous_series_components: list[ContinuousSeriesComponent] = field(default_factory=list)
     roll_events: list[RollEvent] = field(default_factory=list)
+    market_data_ingestion_runs: list[MarketDataIngestionRun] = field(default_factory=list)
+    market_data_events: list[MarketDataEvent] = field(default_factory=list)
+    live_candle_snapshots: list[LiveCandleSnapshot] = field(default_factory=list)
     system_events: list[SystemEvent] = field(default_factory=list)
     audit_logs: list[AuditLog] = field(default_factory=list)
 
@@ -290,8 +300,111 @@ class InMemoryStorage:
             events = [event for event in events if event.roll_date < end_date]
         return sorted(events, key=lambda event: event.roll_date)
 
+    def save_market_data_ingestion_run(self, run: MarketDataIngestionRun) -> None:
+        self.market_data_ingestion_runs = [
+            existing for existing in self.market_data_ingestion_runs if existing.id != run.id
+        ]
+        self.market_data_ingestion_runs.append(run)
+
+    def get_market_data_ingestion_run(self, run_id: str) -> MarketDataIngestionRun | None:
+        return next((run for run in self.market_data_ingestion_runs if run.id == run_id), None)
+
+    def list_market_data_ingestion_runs(
+        self,
+        source: MarketDataSource | None = None,
+        status: MarketDataIngestionStatus | None = None,
+        limit: int = 100,
+    ) -> list[MarketDataIngestionRun]:
+        runs = self.market_data_ingestion_runs
+        if source is not None:
+            runs = [run for run in runs if run.source == source]
+        if status is not None:
+            runs = [run for run in runs if run.status == status]
+        return sorted(runs, key=lambda run: run.started_at, reverse=True)[:limit]
+
+    def save_market_data_event(self, event: MarketDataEvent) -> None:
+        self.market_data_events.append(event)
+
+    def save_market_data_events(self, events: list[MarketDataEvent]) -> None:
+        self.market_data_events.extend(events)
+
+    def list_market_data_events(
+        self,
+        source: MarketDataSource | None = None,
+        instrument_id: str | None = None,
+        canonical_symbol: str | None = None,
+        interval: str | None = None,
+        limit: int = 500,
+    ) -> list[MarketDataEvent]:
+        events = self.market_data_events
+        if source is not None:
+            events = [event for event in events if event.source == source]
+        if instrument_id is not None:
+            events = [event for event in events if event.instrument_id == instrument_id]
+        if canonical_symbol is not None:
+            events = [event for event in events if event.canonical_symbol == canonical_symbol]
+        if interval is not None:
+            events = [event for event in events if event.interval == interval]
+        return sorted(events, key=lambda event: event.received_at, reverse=True)[:limit]
+
+    def save_live_candle_snapshot(self, snapshot: LiveCandleSnapshot) -> None:
+        key = _live_candle_snapshot_key(snapshot)
+        self.live_candle_snapshots = [
+            existing
+            for existing in self.live_candle_snapshots
+            if _live_candle_snapshot_key(existing) != key
+        ]
+        self.live_candle_snapshots.append(snapshot)
+
+    def save_live_candle_snapshots(self, snapshots: list[LiveCandleSnapshot]) -> None:
+        for snapshot in snapshots:
+            self.save_live_candle_snapshot(snapshot)
+
+    def list_live_candle_snapshots(
+        self,
+        source: MarketDataSource | None = None,
+        instrument_id: str | None = None,
+        canonical_symbol: str | None = None,
+        interval: str | None = None,
+        limit: int = 500,
+    ) -> list[LiveCandleSnapshot]:
+        snapshots = self.live_candle_snapshots
+        if source is not None:
+            snapshots = [snapshot for snapshot in snapshots if snapshot.source == source]
+        if instrument_id is not None:
+            snapshots = [snapshot for snapshot in snapshots if snapshot.instrument_id == instrument_id]
+        if canonical_symbol is not None:
+            snapshots = [snapshot for snapshot in snapshots if snapshot.canonical_symbol == canonical_symbol]
+        if interval is not None:
+            snapshots = [snapshot for snapshot in snapshots if snapshot.interval == interval]
+        return sorted(snapshots, key=lambda snapshot: (snapshot.ts_start, snapshot.updated_at), reverse=True)[
+            :limit
+        ]
+
+    def get_latest_live_candle_snapshot(
+        self,
+        canonical_symbol: str,
+        interval: str,
+    ) -> LiveCandleSnapshot | None:
+        snapshots = self.list_live_candle_snapshots(
+            canonical_symbol=canonical_symbol,
+            interval=interval,
+            limit=1,
+        )
+        return snapshots[0] if snapshots else None
+
     def save_system_event(self, event: SystemEvent) -> None:
         self.system_events.append(event)
 
     def save_audit_log(self, audit_log: AuditLog) -> None:
         self.audit_logs.append(audit_log)
+
+
+def _live_candle_snapshot_key(snapshot: LiveCandleSnapshot) -> tuple[str, str, str, str, datetime]:
+    return (
+        snapshot.source.value,
+        snapshot.venue.value,
+        snapshot.instrument_id,
+        snapshot.interval,
+        snapshot.ts_start,
+    )

@@ -41,6 +41,9 @@ trading research run --strategy opening_range_breakout --canonical-symbol MOEX:S
 trading research report --research-run-id <id> --format json
 trading research compare --research-run-id <id> --sort-by profit_factor
 trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
+trading live-data state
+trading live-data replay-demo --canonical-symbol MOEX:SiH6 --interval 1m --count 5
+trading live-data poll-moex-once --symbol SiH6 --instrument-id moex:SiH6 --interval 1m
 trading db check-config
 npm --prefix apps/web install
 npm --prefix apps/web run dev
@@ -48,6 +51,8 @@ npm --prefix apps/web run lint
 npm --prefix apps/web run typecheck
 npm --prefix apps/web run test -- --run
 npm --prefix apps/web run build
+npm run api:openapi
+npm run web:api-types
 ```
 
 SQLAlchemy models, Alembic migrations и sync `SQLAlchemyStorage` уже добавлены. Repository-тесты используют
@@ -75,6 +80,8 @@ SQLite in-memory; production PostgreSQL schema должна оставаться
 - MOEX ISS adapter остаётся read-only: historical candles only, без execution methods.
 - MOEX ISS instruments sync остаётся read-only и не требует credentials.
 - MOEX backfill CLI/API не делает внешний запрос без `--allow-network` / `allow_network=true`.
+- Read-only live-data ingestion не делает внешний запрос без `--allow-network` / `allow_network=true`.
+- Demo live-data replay использует только offline synthetic candles.
 - `backtest run-db` запускает сохранённые MOEX-свечи через PAPER-копию инструмента, не через live venue.
 - `ResearchRunner` принимает `broker_factory`; `trading_core` не должен импортировать `adapters.paper`.
 - Research workflow использует только сохранённые candles из storage и не делает external HTTP.
@@ -84,7 +91,8 @@ SQLite in-memory; production PostgreSQL schema должна оставаться
 - Continuous futures MVP не делает price adjustment и не должен использовать live/streaming data.
 - Roll rules MVP основаны на expiry/last_trade_date; liquidity/open-interest roll пока не реализован.
 - Frontend dashboard живёт в `apps/web`, работает только через HTTP API и не импортирует Python packages.
-- Frontend dashboard остаётся read-only: никаких order forms, broker credentials, live controls или WebSocket.
+- Frontend dashboard остаётся read-only: никаких order forms, broker credentials, live trading controls или WebSocket.
+- Frontend UI по умолчанию русскоязычный, но enum/status/domain IDs из API могут отображаться как технические значения.
 - Decimal strings могут конвертироваться в JS `number` только для отрисовки графиков; расчёты остаются на backend.
 - Kafka и Java не используются в MVP.
 - Kubernetes не используется в MVP.

@@ -13,6 +13,6 @@ describe("ContinuousSeriesPage", () => {
 
     renderRoute("/continuous", <ContinuousSeriesPage />);
 
-    expect(await screen.findByText("No continuous series")).toBeInTheDocument();
+    expect(await screen.findByText("Серий нет")).toBeInTheDocument();
   });
 });

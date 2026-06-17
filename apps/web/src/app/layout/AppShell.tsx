@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 
+import { ru } from "../../i18n/ru";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
@@ -9,7 +10,7 @@ export function AppShell() {
       <Sidebar />
       <div className="app-main">
         <Topbar />
-        <div className="safety-banner">Read-only research dashboard. No live trading. No broker execution.</div>
+        <div className="safety-banner">{ru.safetyBanner}</div>
         <main className="page-frame">
           <Outlet />
         </main>

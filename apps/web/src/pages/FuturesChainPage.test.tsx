@@ -17,7 +17,7 @@ describe("FuturesChainPage", () => {
 
     renderRoute("/futures-chain", <FuturesChainPage />);
 
-    expect(await screen.findByText("Selected front contract")).toBeInTheDocument();
+    expect(await screen.findByText("Выбранный front contract")).toBeInTheDocument();
     expect(screen.getAllByText("MOEX:SiH6").length).toBeGreaterThan(0);
   });
 });

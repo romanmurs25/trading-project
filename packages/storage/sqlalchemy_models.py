@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import JSON, Date, DateTime, Index, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Date, DateTime, Index, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -298,6 +298,88 @@ class RollEventRow(Base):
     to_instrument_id: Mapped[str] = mapped_column(String(128))
     roll_date: Mapped[date] = mapped_column(Date, index=True)
     reason: Mapped[str] = mapped_column(String(512))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class MarketDataIngestionRunRow(Base):
+    __tablename__ = "market_data_ingestion_runs"
+    __table_args__ = (
+        Index("ix_market_data_ingestion_runs_source_status_started", "source", "status", "started_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source: Mapped[str] = mapped_column(String(64), index=True)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    venue: Mapped[str] = mapped_column(String(32), index=True)
+    instruments: Mapped[list[str]] = mapped_column(JSON)
+    interval: Mapped[str] = mapped_column(String(16), index=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    stopped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_event_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    events_count: Mapped[int] = mapped_column(Integer)
+    candles_count: Mapped[int] = mapped_column(Integer)
+    errors_count: Mapped[int] = mapped_column(Integer)
+    read_only: Mapped[bool] = mapped_column(Boolean)
+    allow_network: Mapped[bool] = mapped_column(Boolean)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class MarketDataEventRow(Base):
+    __tablename__ = "market_data_events"
+    __table_args__ = (
+        Index(
+            "ix_market_data_events_source_instrument_interval_received",
+            "source",
+            "instrument_id",
+            "interval",
+            "received_at",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source: Mapped[str] = mapped_column(String(64), index=True)
+    event_type: Mapped[str] = mapped_column(String(64), index=True)
+    venue: Mapped[str] = mapped_column(String(32), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128), index=True)
+    canonical_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    interval: Mapped[str] = mapped_column(String(16), index=True)
+    ts: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class LiveCandleSnapshotRow(Base):
+    __tablename__ = "live_candle_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "source",
+            "venue",
+            "instrument_id",
+            "interval",
+            "ts_start",
+            name="uq_live_candle_snapshots_market_key",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    source: Mapped[str] = mapped_column(String(64), index=True)
+    venue: Mapped[str] = mapped_column(String(32), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128), index=True)
+    canonical_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    interval: Mapped[str] = mapped_column(String(16), index=True)
+    ts_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    ts_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    open: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    high: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    low: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    close: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    volume: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    value: Mapped[Decimal | None] = mapped_column(Numeric(38, 18), nullable=True)
+    trades_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    is_closed: Mapped[bool] = mapped_column(Boolean, index=True)
+    freshness: Mapped[str] = mapped_column(String(32), index=True)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
 
 

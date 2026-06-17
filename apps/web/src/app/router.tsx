@@ -7,6 +7,7 @@ import { DataQualityPage } from "../pages/DataQualityPage";
 import { FuturesChainPage } from "../pages/FuturesChainPage";
 import { InstrumentDetailPage } from "../pages/InstrumentDetailPage";
 import { InstrumentsPage } from "../pages/InstrumentsPage";
+import { LiveDataPage } from "../pages/LiveDataPage";
 import { MarketSessionsPage } from "../pages/MarketSessionsPage";
 import { ResearchReportPage } from "../pages/ResearchReportPage";
 import { ResearchRunDetailPage } from "../pages/ResearchRunDetailPage";
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: "instruments/:instrumentId", element: <InstrumentDetailPage /> },
       { path: "instruments/by-symbol/:canonicalSymbol", element: <InstrumentDetailPage /> },
       { path: "data-quality", element: <DataQualityPage /> },
+      { path: "live-data", element: <LiveDataPage /> },
       { path: "sessions", element: <MarketSessionsPage /> },
       { path: "futures-chain", element: <FuturesChainPage /> },
       { path: "continuous", element: <ContinuousSeriesPage /> },

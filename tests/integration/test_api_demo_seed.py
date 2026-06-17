@@ -12,11 +12,15 @@ def test_api_demo_seed_populates_read_only_dashboard_data(monkeypatch) -> None:
     runs_response = client.get("/api/research/runs")
     series_response = client.get("/api/continuous-series")
     sessions_response = client.get("/api/market/sessions")
+    live_state_response = client.get("/api/live-data/state")
+    live_candles_response = client.get("/api/live-data/candles")
 
     assert instruments_response.status_code == 200
     assert runs_response.status_code == 200
     assert series_response.status_code == 200
     assert sessions_response.status_code == 200
+    assert live_state_response.status_code == 200
+    assert live_candles_response.status_code == 200
     assert [item["canonical_symbol"] for item in instruments_response.json()] == [
         "MOEX:RIH6",
         "MOEX:SiH6",
@@ -25,6 +29,8 @@ def test_api_demo_seed_populates_read_only_dashboard_data(monkeypatch) -> None:
     assert runs_response.json()
     assert series_response.json()[0]["canonical_symbol"] == "MOEX:Si:CONT:1m"
     assert sessions_response.json()
+    assert live_state_response.json()["latest_candles_count"] == 5
+    assert live_candles_response.json()["candles"]
 
     run_id = runs_response.json()[0]["id"]
     equity_response = client.get(f"/api/research/runs/{run_id}/equity")

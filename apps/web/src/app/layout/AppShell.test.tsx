@@ -17,6 +17,8 @@ describe("AppShell", () => {
 
     renderWithProviders(<RouterProvider router={router} />);
 
-    expect(screen.getByText("Read-only research dashboard. No live trading. No broker execution.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Только чтение: исследование и рыночные данные. Live trading и broker execution отключены."),
+    ).toBeInTheDocument();
   });
 });

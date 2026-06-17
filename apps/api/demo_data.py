@@ -4,6 +4,8 @@ from typing import Any
 
 from trading_core.domain.enums import AssetClass, Side, Venue
 from trading_core.domain.models import BacktestRun, Candle, ContractSpec, Instrument
+from trading_core.live_data.ingestion import ReadOnlyMarketDataIngestionService
+from trading_core.live_data.models import MarketDataIngestionStatus, MarketDataSource
 from trading_core.market.calendar import MarketCalendarService
 from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
 from trading_core.market.moex_templates import default_moex_futures_session_templates
@@ -26,10 +28,12 @@ DEMO_RESEARCH_RUN_ID = "demo-research-orb-si-1m"
 def seed_demo_data(storage: StoragePort) -> None:
     """Seed small deterministic fake data for local read-only dashboard QA."""
     instruments = _demo_instruments()
+    candles = _demo_candles()
     storage.save_instruments(instruments)
     for spec in _demo_contract_specs():
         storage.save_contract_spec(spec)
-    storage.save_candles(_demo_candles())
+    storage.save_candles(candles)
+    _seed_demo_live_data(storage, instruments[0], candles[:5])
     storage.save_market_sessions(_demo_market_sessions())
     storage.save_continuous_series(_demo_continuous_series())
     storage.save_continuous_series_components(_demo_continuous_components())
@@ -41,6 +45,26 @@ def seed_demo_data(storage: StoragePort) -> None:
         storage.save_research_backtest_result(result)
     storage.save_backtest_equity_points(_demo_equity_points())
     storage.save_backtest_trade_records(_demo_trade_records())
+
+
+def _seed_demo_live_data(storage: StoragePort, instrument: Instrument, candles: list[Candle]) -> None:
+    clock_value = datetime(2026, 1, 1, 4, 5, tzinfo=UTC)
+    service = ReadOnlyMarketDataIngestionService(storage=storage, clock=lambda: clock_value)
+    run = service.start_run(
+        source=MarketDataSource.DEMO_REPLAY,
+        venue=instrument.venue,
+        instruments=[instrument.canonical_symbol],
+        interval="1m",
+        allow_network=False,
+        metadata=dict(DEMO_METADATA),
+    )
+    service.ingest_candles(
+        run_id=run.id,
+        source=MarketDataSource.DEMO_REPLAY,
+        instrument=instrument,
+        candles=candles,
+    )
+    service.stop_run(run.id, status=MarketDataIngestionStatus.STOPPED)
 
 
 def _demo_instruments() -> list[Instrument]:

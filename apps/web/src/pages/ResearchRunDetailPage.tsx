@@ -69,40 +69,40 @@ export function ResearchRunDetailPage() {
   return (
     <div className="page-stack">
       <div className="page-title">
-        <p className="eyebrow">Research run</p>
+        <p className="eyebrow">Прогон исследования</p>
         <h2>{run.data?.id}</h2>
       </div>
       <div className="metric-grid">
-        <MetricCard label="Strategy" value={run.data?.strategy_id ?? "—"} />
-        <MetricCard label="Symbol" value={run.data?.canonical_symbol ?? "—"} />
-        <MetricCard label="Status" value={run.data?.status ?? "—"} />
+        <MetricCard label="Стратегия" value={run.data?.strategy_id ?? "—"} />
+        <MetricCard label="Символ" value={run.data?.canonical_symbol ?? "—"} />
+        <MetricCard label="Статус" value={run.data?.status ?? "—"} />
         <MetricCard label="Best profit factor" value={bestMetrics?.profit_factor ?? "—"} />
         <MetricCard label="Best expectancy" value={bestMetrics?.expectancy ?? "—"} />
       </div>
-      <Card title="Run summary" action={<Link to={`/research/${encodeURIComponent(runId)}/report`}><Button variant="secondary">Report</Button></Link>}>
+      <Card title="Сводка" action={<Link to={`/research/${encodeURIComponent(runId)}/report`}><Button variant="secondary">Отчёт</Button></Link>}>
         <dl className="details-grid">
           <div>
             <dt>Interval</dt>
             <dd>{run.data?.interval}</dd>
           </div>
           <div>
-            <dt>Start</dt>
+            <dt>Начало</dt>
             <dd><DateTimeCell value={run.data?.start} /></dd>
           </div>
           <div>
-            <dt>End</dt>
+            <dt>Конец</dt>
             <dd><DateTimeCell value={run.data?.end} /></dd>
           </div>
           <div>
-            <dt>Created</dt>
+            <dt>Создан</dt>
             <dd><DateTimeCell value={run.data?.created_at} /></dd>
           </div>
         </dl>
       </Card>
-      <Card title="Parameter grid">
+      <Card title="Сетка параметров">
         <JsonBlock value={run.data?.parameter_grid ?? {}} />
       </Card>
-      <Card title="Results">
+      <Card title="Результаты">
         {results.isLoading ? <LoadingState /> : null}
         {results.data ? (
           <Table
@@ -114,9 +114,9 @@ export function ResearchRunDetailPage() {
               { key: "expectancy", header: "Expectancy", render: (row) => <DecimalCell value={row.metrics.expectancy} /> },
               { key: "pnl", header: "Total PnL", render: (row) => <DecimalCell value={row.metrics.total_pnl} /> },
               { key: "dd", header: "Max drawdown", render: (row) => <DecimalCell value={row.metrics.max_drawdown} /> },
-              { key: "trades", header: "Trades", render: (row) => <DecimalCell value={row.metrics.trades_count} /> },
-              { key: "status", header: "Status", render: (row) => row.status },
-              { key: "error", header: "Error", render: (row) => row.error_message ?? "—" },
+              { key: "trades", header: "Сделки", render: (row) => <DecimalCell value={row.metrics.trades_count} /> },
+              { key: "status", header: "Статус", render: (row) => row.status },
+              { key: "error", header: "Ошибка", render: (row) => row.error_message ?? "—" },
             ]}
           />
         ) : null}
@@ -128,7 +128,7 @@ export function ResearchRunDetailPage() {
         <Card title="Drawdown">
           <DrawdownChart points={equity.data?.points ?? []} />
         </Card>
-        <Card title="Top result metrics">
+        <Card title="Лучшие метрики">
           <MetricBarChart
             rows={[
               { label: "PF", value: bestMetrics?.profit_factor },
@@ -139,20 +139,20 @@ export function ResearchRunDetailPage() {
           />
         </Card>
       </div>
-      <Card title="Trade records">
+      <Card title="Сделки">
         <Table
           rows={trades.data?.trades ?? []}
           getRowKey={(row) => row.id}
           columns={[
-            { key: "symbol", header: "Instrument", render: (row) => row.instrument_id },
-            { key: "side", header: "Side", render: (row) => row.side },
-            { key: "entry", header: "Entry", render: (row) => <DateTimeCell value={row.entry_ts} /> },
-            { key: "exit", header: "Exit", render: (row) => <DateTimeCell value={row.exit_ts} /> },
+            { key: "symbol", header: "Инструмент", render: (row) => row.instrument_id },
+            { key: "side", header: "Сторона", render: (row) => row.side },
+            { key: "entry", header: "Вход", render: (row) => <DateTimeCell value={row.entry_ts} /> },
+            { key: "exit", header: "Выход", render: (row) => <DateTimeCell value={row.exit_ts} /> },
             { key: "qty", header: "Qty", render: (row) => <DecimalCell value={row.qty} /> },
             { key: "gross", header: "Gross PnL", render: (row) => <DecimalCell value={row.gross_pnl} /> },
             { key: "net", header: "Net PnL", render: (row) => <DecimalCell value={row.net_pnl} /> },
             { key: "r", header: "R", render: (row) => <DecimalCell value={row.r_multiple} /> },
-            { key: "reason", header: "Reason", render: (row) => row.reason ?? "—" },
+            { key: "reason", header: "Причина", render: (row) => row.reason ?? "—" },
           ]}
         />
       </Card>

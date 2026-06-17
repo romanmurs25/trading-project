@@ -86,6 +86,11 @@ trading research run --strategy opening_range_breakout --canonical-symbol MOEX:S
 trading research report --research-run-id <id> --format markdown
 trading research compare --research-run-id <id> --sort-by profit_factor
 trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
+trading live-data state
+trading live-data replay-demo --canonical-symbol MOEX:SiH6 --interval 1m --count 5
+trading live-data candles --canonical-symbol MOEX:SiH6 --interval 1m
+trading live-data events --source DEMO_REPLAY
+trading live-data poll-moex-once --symbol SiH6 --instrument-id moex:SiH6 --interval 1m
 trading db check-config
 trading db init-placeholder
 ```
@@ -100,9 +105,11 @@ npm --prefix apps/web run lint
 npm --prefix apps/web run typecheck
 npm --prefix apps/web run test -- --run
 npm --prefix apps/web run build
+npm run api:openapi
+npm run web:api-types
 ```
 
-Frontend research dashboard:
+Frontend read-only dashboard:
 
 ```bash
 npm --prefix apps/web install
@@ -157,6 +164,7 @@ Compose поднимает API, frontend dashboard, PostgreSQL и Redis. В пе
 
 - `adapters.paper`: рабочий MVP broker simulator.
 - `adapters.moex_iss`: безопасный read-only adapter для исторических свечей MOEX ISS; тесты используют mocks.
+- `adapters.demo`: offline replay adapter для read-only live-data витрины.
 - `adapters.tinvest`: skeleton с запретом live-исполнения.
 - `adapters.bybit`: skeleton для read-only/testnet-first подхода; Bybit TradFi не реализуется.
 
@@ -234,6 +242,17 @@ Compose поднимает API, frontend dashboard, PostgreSQL и Redis. В пе
 - CI расширен frontend-проверками: lint, typecheck, Vitest и build.
 - Подробнее: [docs/frontend_dashboard.md](docs/frontend_dashboard.md).
 
+## Что добавлено в Cycle 8
+
+- Добавлен read-only market data spine: live candle snapshots, ingestion runs/events и состояние freshness.
+- Добавлены storage-модели, repository methods и Alembic migration `20260617_0005_read_only_market_data`.
+- Добавлен offline `adapters.demo` replay и безопасный MOEX ISS polling-once adapter.
+- Добавлены CLI/API `live-data state/events/candles/replay-demo/poll-moex-once`.
+- Demo seed теперь заполняет live-data snapshots/events без внешней сети.
+- Frontend переведён на русскую read-only оболочку и получил страницу `/live-data`.
+- Добавлен экспорт OpenAPI schema и генерация frontend TypeScript declarations.
+- Подробнее: [docs/read_only_market_data.md](docs/read_only_market_data.md).
+
 ## Что не коммитить
 
 - Виртуальные окружения: `.venv/`, локальные venv в корне проекта.
@@ -275,5 +294,5 @@ MVP строит проверяемое ядро. Kafka, Java, Kubernetes и м�
 
 ## Следующий цикл
 
-Следующий рекомендуемый цикл: официальный MOEX calendar integration, session-aware research reports,
-liquidity/open-interest roll rules, back-adjusted continuous futures и более реалистичная модель исполнения.
+Следующий рекомендуемый цикл: frontend/API contract hardening, auth boundary для read-only dashboard,
+persisted ingestion jobs, official MOEX calendar integration и более реалистичная session/regime аналитика.

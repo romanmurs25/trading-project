@@ -55,6 +55,9 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev -- --host 127.0.0.1
 - Instruments table has demo instruments: `MOEX:SiH6`, `MOEX:SiM6`, `MOEX:RIH6`.
 - Instrument detail opens.
 - Data Quality page works for `MOEX:SiH6`.
+- Live Data page shows demo snapshots.
+- Live Data Demo replay button adds read-only snapshots.
+- Live Data MOEX poll без сети returns skipped and does not require credentials.
 - Market Sessions page has sessions.
 - Futures Chain page works with underlying `Si`.
 - Continuous Series page shows `MOEX:Si:CONT:1m`.
@@ -62,6 +65,7 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev -- --host 127.0.0.1
 - Research Run detail shows results, equity chart and trades.
 - Research Report page opens.
 - Settings page shows API URL and safety constraints.
+- UI shell and navigation are in Russian.
 - No Buy/Sell buttons.
 - No order form.
 - No broker credential form.

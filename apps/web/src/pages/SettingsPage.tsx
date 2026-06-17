@@ -16,7 +16,7 @@ export function SettingsPage() {
     <div className="page-stack">
       <div className="page-title">
         <p className="eyebrow">Runtime</p>
-        <h2>Settings</h2>
+        <h2>Настройки</h2>
       </div>
       <Card title="API">
         <dl className="details-grid">
@@ -25,18 +25,18 @@ export function SettingsPage() {
             <dd>{API_BASE_URL}</dd>
           </div>
           <div>
-            <dt>Configured by</dt>
+            <dt>Переменная</dt>
             <dd>VITE_API_BASE_URL</dd>
           </div>
         </dl>
       </Card>
-      <Card title="Backend health">
+      <Card title="Состояние backend">
         {health.isLoading ? <LoadingState /> : null}
         {health.error ? <ErrorState error={health.error} /> : null}
         {health.data ? (
           <dl className="details-grid">
             <div>
-              <dt>Status</dt>
+              <dt>Статус</dt>
               <dd>{health.data.status}</dd>
             </div>
             <div>
@@ -45,18 +45,18 @@ export function SettingsPage() {
             </div>
             <div>
               <dt>Live trading</dt>
-              <dd>{health.data.live_trading_enabled ? "enabled" : "disabled"}</dd>
+              <dd>{health.data.live_trading_enabled ? "включен" : "отключен"}</dd>
             </div>
           </dl>
         ) : null}
       </Card>
       <Card title="Safety constraints">
         <ul className="plain-list">
-          <li>No live trading controls.</li>
-          <li>No broker execution.</li>
-          <li>No secrets or broker tokens in frontend.</li>
-          <li>No order placement UI.</li>
-          <li>No live market data WebSocket.</li>
+          <li>Нет live trading controls.</li>
+          <li>Нет broker execution.</li>
+          <li>Нет секретов или broker tokens во frontend.</li>
+          <li>Нет order placement UI.</li>
+          <li>Нет live market data WebSocket.</li>
         </ul>
       </Card>
     </div>

@@ -4,6 +4,10 @@ import type {
   FuturesChainResponse,
   HealthResponse,
   Instrument,
+  LiveCandlesResponse,
+  MarketDataEventsResponse,
+  MarketDataState,
+  MoexPollOnceResponse,
   ResearchBacktestResult,
   ResearchComparison,
   ResearchEquityResponse,
@@ -173,4 +177,71 @@ export const continuousSeries: ContinuousSeries = {
   end: "2026-01-02T00:00:00Z",
   created_at: "2026-01-01T00:00:00Z",
   metadata: {},
+};
+
+export const liveDataState: MarketDataState = {
+  status: "IDLE",
+  sources: ["DEMO_REPLAY"],
+  active_runs: [],
+  latest_event_at: "2026-01-01T10:00:00Z",
+  latest_candles_count: 1,
+  stale_candles_count: 0,
+  warnings: [],
+};
+
+export const liveCandles: LiveCandlesResponse = {
+  candles: [
+    {
+      id: "live-candle-1",
+      source: "DEMO_REPLAY",
+      venue: "MOEX",
+      instrument_id: "moex:SiH6",
+      canonical_symbol: "MOEX:SiH6",
+      interval: "1m",
+      ts_start: "2026-01-01T10:00:00Z",
+      ts_end: "2026-01-01T10:01:00Z",
+      open: "100",
+      high: "101",
+      low: "99",
+      close: "100.5",
+      volume: "10",
+      value: "1005",
+      trades_count: 5,
+      updated_at: "2026-01-01T10:00:01Z",
+      is_closed: true,
+      freshness: "FRESH",
+      metadata: {},
+    },
+  ],
+};
+
+export const liveEvents: MarketDataEventsResponse = {
+  events: [
+    {
+      id: "live-event-1",
+      source: "DEMO_REPLAY",
+      event_type: "CANDLE_CLOSED",
+      venue: "MOEX",
+      instrument_id: "moex:SiH6",
+      canonical_symbol: "MOEX:SiH6",
+      interval: "1m",
+      ts: "2026-01-01T10:00:00Z",
+      received_at: "2026-01-01T10:00:01Z",
+      payload: {},
+      metadata: {},
+    },
+  ],
+};
+
+export const moexPollSkipped: MoexPollOnceResponse = {
+  status: "skipped",
+  source: "MOEX_ISS_POLLING",
+  canonical_symbol: "MOEX:SiH6",
+  interval: "1m",
+  lookback_minutes: 5,
+  dry_run: true,
+  allow_network: false,
+  candles_loaded: 0,
+  candles_saved: 0,
+  warnings: ["external network is disabled by default; pass allow_network=true explicitly"],
 };

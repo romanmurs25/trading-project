@@ -42,20 +42,20 @@ export function InstrumentsPage() {
   return (
     <div className="page-stack">
       <div className="page-title">
-        <p className="eyebrow">Registry</p>
-        <h2>Instruments</h2>
+        <p className="eyebrow">Реестр</p>
+        <h2>Инструменты</h2>
       </div>
       <Card>
         <input
           className="field"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by symbol, venue or asset class"
-          aria-label="Search instruments"
+          placeholder="Поиск по символу, площадке или классу актива"
+          aria-label="Поиск инструментов"
         />
       </Card>
       {filtered.length === 0 ? (
-        <EmptyState title="No instruments" message="Run MOEX instruments sync or adjust the filter." />
+        <EmptyState title="Инструменты не найдены" message="Запустите MOEX sync или измените фильтр." />
       ) : (
         <Table
           rows={filtered}
@@ -64,13 +64,13 @@ export function InstrumentsPage() {
           columns={[
             { key: "canonical", header: "Canonical", render: (row) => row.canonical_symbol },
             { key: "native", header: "Native", render: (row) => row.native_symbol },
-            { key: "asset", header: "Asset class", render: (row) => row.asset_class },
-            { key: "venue", header: "Venue", render: (row) => row.venue },
-            { key: "expiry", header: "Expiry", render: (row) => row.expiry_date ?? "—" },
+            { key: "asset", header: "Класс", render: (row) => row.asset_class },
+            { key: "venue", header: "Площадка", render: (row) => row.venue },
+            { key: "expiry", header: "Экспирация", render: (row) => row.expiry_date ?? "—" },
             {
               key: "active",
-              header: "Active",
-              render: (row) => <Badge tone={row.is_active ? "success" : "neutral"}>{row.is_active ? "yes" : "no"}</Badge>,
+              header: "Активен",
+              render: (row) => <Badge tone={row.is_active ? "success" : "neutral"}>{row.is_active ? "да" : "нет"}</Badge>,
             },
           ]}
         />

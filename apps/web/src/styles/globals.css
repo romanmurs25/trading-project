@@ -91,7 +91,6 @@ a {
 }
 
 .api-pill,
-.safety-banner,
 .badge {
   border-radius: 999px;
   white-space: nowrap;
@@ -109,17 +108,20 @@ a {
   padding: 10px 14px;
   background: #e9f7ef;
   border: 1px solid #a8dfbd;
+  border-radius: 20px;
   color: #1d6b3a;
   font-weight: 700;
 }
 
 .page-frame {
+  min-width: 0;
   padding: 24px 28px 40px;
 }
 
 .page-stack {
   display: grid;
   gap: 18px;
+  min-width: 0;
 }
 
 .page-title h2 {
@@ -131,6 +133,7 @@ a {
   border: 1px solid #dce3e8;
   border-radius: 8px;
   padding: 16px;
+  min-width: 0;
 }
 
 .card-header {
@@ -147,8 +150,9 @@ a {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .metric-card {
@@ -183,6 +187,7 @@ a {
 }
 
 .table-wrap {
+  min-width: 0;
   overflow-x: auto;
   background: #ffffff;
   border: 1px solid #dce3e8;
@@ -380,6 +385,13 @@ pre {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 14px;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .plain-list {

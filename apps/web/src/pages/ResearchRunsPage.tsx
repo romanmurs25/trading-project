@@ -40,13 +40,13 @@ export function ResearchRunsPage() {
     <div className="page-stack">
       <div className="page-title">
         <p className="eyebrow">Research</p>
-        <h2>Research Runs</h2>
+        <h2>Исследовательские прогоны</h2>
       </div>
       <Card>
-        <input className="field" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Filter by strategy, symbol or status" />
+        <input className="field" value={filter} onChange={(event) => setFilter(event.target.value)} placeholder="Фильтр по стратегии, символу или статусу" />
       </Card>
       {rows.length === 0 ? (
-        <EmptyState title="No research runs" message="Run research from CLI/API after storing candles." />
+        <EmptyState title="Прогонов нет" message="Запустите research workflow после загрузки свечей." />
       ) : (
         <Table
           rows={rows}
@@ -54,13 +54,13 @@ export function ResearchRunsPage() {
           onRowClick={(row) => navigate(`/research/${encodeURIComponent(row.id)}`)}
           columns={[
             { key: "id", header: "ID", render: (row) => row.id },
-            { key: "strategy", header: "Strategy", render: (row) => row.strategy_id },
-            { key: "symbol", header: "Symbol", render: (row) => row.canonical_symbol },
-            { key: "interval", header: "Interval", render: (row) => row.interval },
-            { key: "period", header: "Period", render: (row) => `${row.start.slice(0, 10)} → ${row.end.slice(0, 10)}` },
-            { key: "status", header: "Status", render: (row) => <Badge tone={row.status === "COMPLETED" ? "success" : "warning"}>{row.status}</Badge> },
-            { key: "created", header: "Created", render: (row) => <DateTimeCell value={row.created_at} /> },
-            { key: "completed", header: "Completed", render: (row) => <DateTimeCell value={row.completed_at} /> },
+            { key: "strategy", header: "Стратегия", render: (row) => row.strategy_id },
+            { key: "symbol", header: "Символ", render: (row) => row.canonical_symbol },
+            { key: "interval", header: "Интервал", render: (row) => row.interval },
+            { key: "period", header: "Период", render: (row) => `${row.start.slice(0, 10)} → ${row.end.slice(0, 10)}` },
+            { key: "status", header: "Статус", render: (row) => <Badge tone={row.status === "COMPLETED" ? "success" : "warning"}>{row.status}</Badge> },
+            { key: "created", header: "Создан", render: (row) => <DateTimeCell value={row.created_at} /> },
+            { key: "completed", header: "Завершен", render: (row) => <DateTimeCell value={row.completed_at} /> },
           ]}
         />
       )}

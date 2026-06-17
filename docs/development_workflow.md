@@ -64,6 +64,35 @@ trading backtest run-synthetic
 
 Команда должна работать без broker credentials, внешних API и live trading.
 
+## Read-only live data
+
+Offline demo replay:
+
+```bash
+trading live-data replay-demo --canonical-symbol MOEX:SiH6 --interval 1m --count 5
+trading live-data state
+trading live-data candles --canonical-symbol MOEX:SiH6 --interval 1m
+trading live-data events --source DEMO_REPLAY
+```
+
+MOEX polling по умолчанию не ходит в сеть:
+
+```bash
+trading live-data poll-moex-once --symbol SiH6 --instrument-id moex:SiH6 --interval 1m
+```
+
+Для реального read-only запроса нужен явный флаг:
+
+```bash
+trading live-data poll-moex-once \
+  --canonical-symbol MOEX:SiH6 \
+  --interval 1m \
+  --lookback-minutes 5 \
+  --allow-network
+```
+
+Сохранение snapshots требует `--write`; без него команда остаётся dry-run.
+
 ## DB-backed backtest
 
 После сохранения instruments и candles в storage можно запускать бэктест по canonical symbol:
@@ -164,6 +193,28 @@ alembic upgrade head
 ```
 
 Repository-слой в этом цикле sync SQLAlchemy. Default `DATABASE_URL` использует `postgresql+psycopg`.
+
+## OpenAPI и frontend types
+
+Экспорт OpenAPI:
+
+```bash
+python3 scripts/export_openapi.py
+```
+
+Генерация frontend declarations:
+
+```bash
+npm --prefix apps/web run api:types
+```
+
+Root helper:
+
+```bash
+npm run web:api-types
+```
+
+Для root helper текущий `python3` должен видеть backend-зависимости, например из активированного virtualenv.
 
 ## Ветки
 

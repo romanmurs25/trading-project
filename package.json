@@ -7,6 +7,8 @@
     "web:build": "npm --prefix apps/web run build",
     "web:test": "npm --prefix apps/web run test -- --run",
     "web:lint": "npm --prefix apps/web run lint",
-    "web:typecheck": "npm --prefix apps/web run typecheck"
+    "web:typecheck": "npm --prefix apps/web run typecheck",
+    "api:openapi": "python3 scripts/export_openapi.py",
+    "web:api-types": "python3 scripts/export_openapi.py && npm --prefix apps/web run api:types"
   }
 }

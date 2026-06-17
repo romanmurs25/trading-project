@@ -42,35 +42,35 @@ export function DataQualityPage() {
   return (
     <div className="page-stack">
       <div className="page-title">
-        <p className="eyebrow">Candles</p>
-        <h2>Data Quality</h2>
+        <p className="eyebrow">Свечи</p>
+        <h2>Качество данных</h2>
       </div>
-      <Card title="Quality request">
+      <Card title="Проверка качества">
         <form className="form-grid" onSubmit={submit}>
           <label>
             Canonical symbol
             <input className="field" value={form.canonicalSymbol} onChange={(event) => setForm({ ...form, canonicalSymbol: event.target.value })} />
           </label>
           <label>
-            Interval
+            Интервал
             <input className="field" value={form.interval} onChange={(event) => setForm({ ...form, interval: event.target.value })} />
           </label>
           <label>
-            From
+            С
             <input className="field" type="date" value={form.from} onChange={(event) => setForm({ ...form, from: event.target.value })} />
           </label>
           <label>
-            To
+            По
             <input className="field" type="date" value={form.to} onChange={(event) => setForm({ ...form, to: event.target.value })} />
           </label>
           <label>
-            Mode
+            Режим
             <select className="field" value={form.mode} onChange={(event) => setForm({ ...form, mode: event.target.value })}>
               <option value="session-aware">session-aware</option>
               <option value="continuous-time" disabled>continuous-time placeholder</option>
             </select>
           </label>
-          <Button type="submit">Run check</Button>
+          <Button type="submit">Проверить</Button>
         </form>
       </Card>
       {report.isLoading ? <LoadingState /> : null}
@@ -78,19 +78,19 @@ export function DataQualityPage() {
       {data ? (
         <>
           <div className="metric-grid">
-            <MetricCard label="Candles" value={data.candles_count} />
-            <MetricCard label="Expected" value={data.expected_candles_count} />
+            <MetricCard label="Свечи" value={data.candles_count} />
+            <MetricCard label="Ожидалось" value={data.expected_candles_count} />
             <MetricCard
-              label="Missing expected"
+              label="Пропущено"
               value={data.missing_expected_candles_count}
               tone={data.missing_expected_candles_count ? "warning" : "success"}
             />
-            <MetricCard label="Duplicates" value={data.duplicates_count} />
-            <MetricCard label="Out of session" value={data.unexpected_out_of_session_count} />
-            <MetricCard label="Non-monotonic" value={data.non_monotonic_count} />
-            <MetricCard label="Zero volume" value={data.zero_volume_count} />
+            <MetricCard label="Дубликаты" value={data.duplicates_count} />
+            <MetricCard label="Вне сессий" value={data.unexpected_out_of_session_count} />
+            <MetricCard label="Порядок" value={data.non_monotonic_count} />
+            <MetricCard label="Нулевой объём" value={data.zero_volume_count} />
           </div>
-          <Card title="Session counts">
+          <Card title="Сессии">
             <ul className="plain-list">
               {Object.entries(data.session_counts).map(([sessionType, count]) => (
                 <li key={sessionType}>
@@ -99,9 +99,9 @@ export function DataQualityPage() {
               ))}
             </ul>
           </Card>
-          <Card title="Warnings">
+          <Card title="Предупреждения">
             <ul className="plain-list">
-              {(data.warnings.length ? data.warnings : ["no warnings"]).map((warning) => (
+              {(data.warnings.length ? data.warnings : ["предупреждений нет"]).map((warning) => (
                 <li key={warning}>{warning}</li>
               ))}
             </ul>

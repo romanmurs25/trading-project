@@ -17,6 +17,13 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.live_data.models import (
+    LiveCandleSnapshot,
+    MarketDataEvent,
+    MarketDataIngestionRun,
+    MarketDataIngestionStatus,
+    MarketDataSource,
+)
 from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
 from trading_core.market.roll import RollEvent
 from trading_core.market.sessions import MarketSession
@@ -134,6 +141,49 @@ class StoragePort(Protocol):
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> list[RollEvent]: ...
+
+    def save_market_data_ingestion_run(self, run: MarketDataIngestionRun) -> None: ...
+
+    def get_market_data_ingestion_run(self, run_id: str) -> MarketDataIngestionRun | None: ...
+
+    def list_market_data_ingestion_runs(
+        self,
+        source: MarketDataSource | None = None,
+        status: MarketDataIngestionStatus | None = None,
+        limit: int = 100,
+    ) -> list[MarketDataIngestionRun]: ...
+
+    def save_market_data_event(self, event: MarketDataEvent) -> None: ...
+
+    def save_market_data_events(self, events: list[MarketDataEvent]) -> None: ...
+
+    def list_market_data_events(
+        self,
+        source: MarketDataSource | None = None,
+        instrument_id: str | None = None,
+        canonical_symbol: str | None = None,
+        interval: str | None = None,
+        limit: int = 500,
+    ) -> list[MarketDataEvent]: ...
+
+    def save_live_candle_snapshot(self, snapshot: LiveCandleSnapshot) -> None: ...
+
+    def save_live_candle_snapshots(self, snapshots: list[LiveCandleSnapshot]) -> None: ...
+
+    def list_live_candle_snapshots(
+        self,
+        source: MarketDataSource | None = None,
+        instrument_id: str | None = None,
+        canonical_symbol: str | None = None,
+        interval: str | None = None,
+        limit: int = 500,
+    ) -> list[LiveCandleSnapshot]: ...
+
+    def get_latest_live_candle_snapshot(
+        self,
+        canonical_symbol: str,
+        interval: str,
+    ) -> LiveCandleSnapshot | None: ...
 
     def save_system_event(self, event: SystemEvent) -> None: ...
 

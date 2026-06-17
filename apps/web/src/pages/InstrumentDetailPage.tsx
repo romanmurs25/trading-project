@@ -34,30 +34,30 @@ export function InstrumentDetailPage() {
   return (
     <div className="page-stack">
       <div className="page-title">
-        <p className="eyebrow">Instrument detail</p>
-        <h2>{instrument?.canonical_symbol ?? "Instrument"}</h2>
+        <p className="eyebrow">Детали инструмента</p>
+        <h2>{instrument?.canonical_symbol ?? "Инструмент"}</h2>
       </div>
-      <Card title="Instrument">
+      <Card title="Инструмент">
         <dl className="details-grid">
           <div>
             <dt>Native symbol</dt>
             <dd>{instrument?.native_symbol}</dd>
           </div>
           <div>
-            <dt>Venue</dt>
+            <dt>Площадка</dt>
             <dd>{instrument?.venue}</dd>
           </div>
           <div>
-            <dt>Asset class</dt>
+            <dt>Класс актива</dt>
             <dd>{instrument?.asset_class}</dd>
           </div>
           <div>
-            <dt>Expiry</dt>
+            <dt>Экспирация</dt>
             <dd><DateTimeCell value={instrument?.expiry_date} /></dd>
           </div>
         </dl>
       </Card>
-      <Card title="Contract spec">
+      <Card title="Спецификация контракта">
         {spec ? (
           <dl className="details-grid">
             <div>
@@ -73,12 +73,12 @@ export function InstrumentDetailPage() {
               <dd><DecimalCell value={spec.tick_value} /></dd>
             </div>
             <div>
-              <dt>Currency</dt>
+              <dt>Валюта</dt>
               <dd>{spec.currency}</dd>
             </div>
           </dl>
         ) : (
-          <p className="muted">No contract spec stored.</p>
+          <p className="muted">Спецификация контракта не сохранена.</p>
         )}
       </Card>
       <Card title="Metadata">

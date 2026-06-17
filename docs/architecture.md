@@ -12,6 +12,7 @@ MVP использует clean/hexagonal architecture внутри Python-мон
 - `trading_core.backtest` соединяет стратегию, риск и broker simulator через `BacktestBrokerPort`.
 - `trading_core.market` описывает market sessions, calendar classification, futures roll и continuous series
   для research/backtest workflows.
+- `trading_core.live_data` описывает read-only ingestion runs/events/snapshots и freshness state.
 - `adapters` реализуют или подготавливают внешние интеграции.
 - `apps` собирают ядро и адаптеры в API/CLI.
 - `apps/web` содержит read-only frontend research dashboard. Он не импортирует Python packages и общается с
@@ -55,6 +56,22 @@ in-memory, а schema остаётся совместимой с PostgreSQL.
 
 `adapters.moex_iss` реализует только historical candles. Adapter не содержит execution methods и не требует
 credentials. CLI/API backfill по умолчанию dry-run и не делает внешний запрос без явного разрешения сети.
+
+## Read-only live-data flow
+
+Cycle 8 добавляет live-like ingestion без live trading:
+
+```text
+adapters.demo replay OR adapters.moex_iss polling-once
+  -> apps CLI/API explicit orchestration
+  -> ReadOnlyMarketDataIngestionService
+  -> StoragePort market_data_ingestion_runs / market_data_events / live_candle_snapshots
+  -> HTTP API / apps/web /live-data
+```
+
+`trading_core.live_data` не импортирует `adapters`. Demo replay и MOEX polling находятся в adapter-слое,
+а CLI/API собирают их с `ReadOnlyMarketDataIngestionService`. MOEX polling не делает внешний запрос без
+`--allow-network` или `allow_network=true`. Demo replay всегда offline.
 
 ## MOEX research dataset flow
 

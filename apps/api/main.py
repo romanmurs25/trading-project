@@ -10,6 +10,7 @@ from apps.api.routers import (
     health,
     instruments,
     journal,
+    live_data,
     market_data,
     market_realism,
     orders,
@@ -38,6 +39,7 @@ def create_app() -> FastAPI:
     application.include_router(health.router)
     application.include_router(instruments.router)
     application.include_router(market_data.router)
+    application.include_router(live_data.router)
     application.include_router(backtests.router)
     application.include_router(strategies.router)
     application.include_router(research.router)

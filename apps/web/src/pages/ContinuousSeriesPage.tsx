@@ -44,10 +44,10 @@ export function ContinuousSeriesPage() {
     <div className="page-stack">
       <div className="page-title">
         <p className="eyebrow">Continuous futures</p>
-        <h2>Continuous Series</h2>
+        <h2>Непрерывные серии</h2>
       </div>
       {series.data?.length === 0 ? (
-        <EmptyState title="No continuous series" message="Build one from CLI: trading data build-continuous --underlying Si --interval 1m --from 2026-03-13 --to 2026-03-17 --write" />
+        <EmptyState title="Серий нет" message="Соберите continuous series через CLI/API после загрузки свечей." />
       ) : null}
       {series.data && series.data.length > 0 ? (
         <Table
@@ -57,16 +57,16 @@ export function ContinuousSeriesPage() {
           columns={[
             { key: "canonical", header: "Canonical", render: (row) => row.canonical_symbol },
             { key: "underlying", header: "Underlying", render: (row) => row.underlying_symbol },
-            { key: "interval", header: "Interval", render: (row) => row.interval },
+            { key: "interval", header: "Интервал", render: (row) => row.interval },
             { key: "method", header: "Adjustment", render: (row) => row.adjustment_method },
-            { key: "start", header: "Start", render: (row) => <DateTimeCell value={row.start} /> },
-            { key: "end", header: "End", render: (row) => <DateTimeCell value={row.end} /> },
+            { key: "start", header: "Начало", render: (row) => <DateTimeCell value={row.start} /> },
+            { key: "end", header: "Конец", render: (row) => <DateTimeCell value={row.end} /> },
           ]}
         />
       ) : null}
       {selected ? (
         <div className="split-grid">
-          <Card title={`Components: ${selected.canonical_symbol}`}>
+          <Card title={`Компоненты: ${selected.canonical_symbol}`}>
             {components.isLoading ? <LoadingState /> : null}
             {components.error ? <ErrorState error={components.error} /> : null}
             {components.data ? (
@@ -74,10 +74,10 @@ export function ContinuousSeriesPage() {
                 rows={components.data.components}
                 getRowKey={(row) => row.id}
                 columns={[
-                  { key: "symbol", header: "Symbol", render: (row) => row.canonical_symbol },
+                  { key: "symbol", header: "Символ", render: (row) => row.canonical_symbol },
                   { key: "instrument", header: "Instrument ID", render: (row) => row.instrument_id },
-                  { key: "start", header: "Start", render: (row) => <DateTimeCell value={row.start} /> },
-                  { key: "end", header: "End", render: (row) => <DateTimeCell value={row.end} /> },
+                  { key: "start", header: "Начало", render: (row) => <DateTimeCell value={row.start} /> },
+                  { key: "end", header: "Конец", render: (row) => <DateTimeCell value={row.end} /> },
                 ]}
               />
             ) : null}

@@ -236,3 +236,98 @@ export interface FrontContractResponse {
   days_to_expiry: number;
   metadata: Record<string, unknown>;
 }
+
+export interface MarketDataIngestionRun {
+  id: string;
+  source: string;
+  status: string;
+  venue: string;
+  instruments: string[];
+  interval: string;
+  started_at: IsoDateTime;
+  stopped_at?: IsoDateTime | null;
+  last_event_at?: IsoDateTime | null;
+  events_count: number;
+  candles_count: number;
+  errors_count: number;
+  read_only: boolean;
+  allow_network: boolean;
+  metadata: Record<string, unknown>;
+}
+
+export interface MarketDataState {
+  status: string;
+  sources: string[];
+  active_runs: MarketDataIngestionRun[];
+  latest_event_at?: IsoDateTime | null;
+  latest_candles_count: number;
+  stale_candles_count: number;
+  warnings: string[];
+}
+
+export interface LiveCandleSnapshot {
+  id: string;
+  source: string;
+  venue: string;
+  instrument_id: string;
+  canonical_symbol: string;
+  interval: string;
+  ts_start: IsoDateTime;
+  ts_end: IsoDateTime;
+  open: DecimalString;
+  high: DecimalString;
+  low: DecimalString;
+  close: DecimalString;
+  volume: DecimalString;
+  value?: DecimalString | null;
+  trades_count?: number | null;
+  updated_at: IsoDateTime;
+  is_closed: boolean;
+  freshness: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface LiveCandlesResponse {
+  candles: LiveCandleSnapshot[];
+}
+
+export interface MarketDataEvent {
+  id: string;
+  source: string;
+  event_type: string;
+  venue: string;
+  instrument_id: string;
+  canonical_symbol: string;
+  interval: string;
+  ts: IsoDateTime;
+  received_at: IsoDateTime;
+  payload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}
+
+export interface MarketDataEventsResponse {
+  events: MarketDataEvent[];
+}
+
+export interface DemoReplayResponse {
+  status: string;
+  source: string;
+  run_id: string;
+  read_only: boolean;
+  allow_network: boolean;
+  snapshots_count: number;
+  latest_snapshot?: LiveCandleSnapshot | null;
+}
+
+export interface MoexPollOnceResponse {
+  status: string;
+  source: string;
+  canonical_symbol: string;
+  interval: string;
+  lookback_minutes: number;
+  dry_run: boolean;
+  allow_network: boolean;
+  candles_loaded: number;
+  candles_saved: number;
+  warnings: string[];
+}
