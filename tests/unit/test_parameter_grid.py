@@ -53,5 +53,10 @@ def test_parameter_grid_rejects_float_values() -> None:
         parse_parameter_grid({"take_profit_r_multiple": [1.5]})
 
 
+def test_parameter_grid_rejects_bool_values() -> None:
+    with pytest.raises(DataValidationError):
+        parse_parameter_grid({"flag": [True]})
+
+
 def test_parameter_grid_accepts_empty_grid_as_one_default_combination() -> None:
     assert parse_parameter_grid({}) == [{}]

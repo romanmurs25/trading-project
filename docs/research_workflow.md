@@ -57,6 +57,11 @@ Parameter grid разворачивается в cartesian product. Numeric-look
 
 По умолчанию gate строгий. CLI-флаг `--allow-data-quality-warnings` ослабляет gate для exploratory runs.
 
+Важно: текущая проверка `missing intervals` continuous-time based. Она пока не понимает MOEX trading
+sessions, выходные, clearing breaks и contract-specific calendars. Для реального MOEX intraday research
+используйте gate аккуратно или запускайте exploratory runs с `--allow-data-quality-warnings`, пока не
+появится session-aware quality gate.
+
 ## Persistence
 
 Research workflow сохраняет:
@@ -112,9 +117,14 @@ Cycle 5 генерирует splits, но не запускает полноце
 - Нет order book.
 - In-memory CLI storage process-local.
 - Reports пока общие, не strategy-specific.
+- Missing-interval gate пока не session-aware: не учитывает MOEX sessions, выходные, clearing breaks и
+  contract-specific calendars.
 
 ## Next step
 
+Cycle 6 должен добавить session-aware quality checking:
+
+- session-aware data-quality gate для MOEX;
 - continuous futures / contract roll;
 - richer execution/slippage model;
 - strategy-specific research reports;

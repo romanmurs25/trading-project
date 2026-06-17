@@ -33,9 +33,11 @@ def parse_parameter_grid(
 
 
 def _normalize_value(value: Any) -> object:
+    if isinstance(value, bool):
+        raise DataValidationError("bool is forbidden in parameter grid")
     if isinstance(value, float):
         raise DataValidationError("float is forbidden in parameter grid")
-    if isinstance(value, Decimal | int | bool):
+    if isinstance(value, Decimal | int):
         return value
     if isinstance(value, str):
         return _normalize_string(value)
