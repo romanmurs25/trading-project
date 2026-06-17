@@ -129,4 +129,4 @@ def test_api_build_continuous_endpoint_works() -> None:
 
     assert response.status_code == 200
     assert response.json()["candles_count"] == 2
-    assert storage.get_continuous_series_by_canonical_symbol("MOEX:Si:CONT") is not None
+    assert storage.get_continuous_series_by_canonical_symbol("MOEX:Si:CONT:1m") is not None

@@ -55,6 +55,9 @@ def build_continuous_futures_series(
     if start.tzinfo is None or end.tzinfo is None:
         raise ValueError("start/end must be timezone-aware")
     chain = build_contract_chain(instruments, contract_specs, underlying_symbol)
+    canonical_symbols_by_instrument = {
+        instrument.id: instrument.canonical_symbol for instrument in chain.instruments
+    }
     events = generate_roll_events(chain, start, end, roll_rule)
     selected_candles: list[Candle] = []
     warnings: list[str] = []
@@ -79,7 +82,7 @@ def build_continuous_futures_series(
     series = ContinuousSeries(
         venue=chain.venue,
         underlying_symbol=underlying_symbol,
-        canonical_symbol=f"{chain.venue}:{underlying_symbol}:CONT",
+        canonical_symbol=f"{chain.venue}:{underlying_symbol}:CONT:{interval}",
         interval=interval,
         roll_rule=roll_rule.model_dump(mode="json"),
         adjustment_method=adjustment_method,
@@ -87,11 +90,15 @@ def build_continuous_futures_series(
         end=end,
         metadata={"warnings": warnings},
     )
-    components = _components_from_candles(series.id, selected_candles)
+    components = _components_from_candles(series.id, selected_candles, canonical_symbols_by_instrument)
     return series, components, selected_candles, events
 
 
-def _components_from_candles(series_id: str, candles: list[Candle]) -> list[ContinuousSeriesComponent]:
+def _components_from_candles(
+    series_id: str,
+    candles: list[Candle],
+    canonical_symbols_by_instrument: dict[str, str],
+) -> list[ContinuousSeriesComponent]:
     components: list[ContinuousSeriesComponent] = []
     current_key: str | None = None
     current_start: datetime | None = None
@@ -107,13 +114,27 @@ def _components_from_candles(series_id: str, candles: list[Candle]) -> list[Cont
             current_end = candle.ts_end
             continue
         components.append(
-            _component(series_id, current_key, current_start, current_end)
+            _component(
+                series_id,
+                current_key,
+                canonical_symbols_by_instrument.get(current_key, current_key),
+                current_start,
+                current_end,
+            )
         )
         current_key = source_instrument
         current_start = candle.ts_start
         current_end = candle.ts_end
     if current_key is not None:
-        components.append(_component(series_id, current_key, current_start, current_end))
+        components.append(
+            _component(
+                series_id,
+                current_key,
+                canonical_symbols_by_instrument.get(current_key, current_key),
+                current_start,
+                current_end,
+            )
+        )
     return components
 
 
@@ -127,6 +148,7 @@ def _source_instrument_from_candle(candle: Candle) -> str:
 def _component(
     series_id: str,
     instrument_id: str,
+    canonical_symbol: str,
     start: datetime | None,
     end: datetime | None,
 ) -> ContinuousSeriesComponent:
@@ -135,7 +157,7 @@ def _component(
     return ContinuousSeriesComponent(
         continuous_series_id=series_id,
         instrument_id=instrument_id,
-        canonical_symbol=instrument_id,
+        canonical_symbol=canonical_symbol,
         start=start,
         end=end,
         metadata={"source": "continuous-futures"},

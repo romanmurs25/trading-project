@@ -406,7 +406,17 @@ class SQLAlchemyStorage:
 
     def save_continuous_series(self, series: ContinuousSeries) -> None:
         with self.session_factory.begin() as session:
-            session.merge(_continuous_series_row(series))
+            existing = session.scalar(
+                select(ContinuousSeriesRow).where(ContinuousSeriesRow.id == series.id)
+            ) or session.scalar(
+                select(ContinuousSeriesRow).where(
+                    ContinuousSeriesRow.canonical_symbol == series.canonical_symbol
+                )
+            )
+            if existing is None:
+                session.add(_continuous_series_row(series))
+            else:
+                _update_continuous_series_row(existing, series)
 
     def get_continuous_series(self, series_id: str) -> ContinuousSeries | None:
         with self.session_factory() as session:
@@ -766,6 +776,21 @@ def _continuous_series_row(series: ContinuousSeries) -> ContinuousSeriesRow:
         created_at=series.created_at,
         metadata_json=payload["metadata"],
     )
+
+
+def _update_continuous_series_row(row: ContinuousSeriesRow, series: ContinuousSeries) -> None:
+    payload = series.model_dump(mode="json")
+    row.id = series.id
+    row.venue = series.venue
+    row.underlying_symbol = series.underlying_symbol
+    row.canonical_symbol = series.canonical_symbol
+    row.interval = series.interval
+    row.roll_rule = payload["roll_rule"]
+    row.adjustment_method = series.adjustment_method
+    row.start = series.start
+    row.end = series.end
+    row.created_at = series.created_at
+    row.metadata_json = payload["metadata"]
 
 
 def _continuous_series_from_row(row: ContinuousSeriesRow) -> ContinuousSeries:

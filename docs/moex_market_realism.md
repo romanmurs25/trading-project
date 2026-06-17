@@ -59,6 +59,7 @@ trading data build-continuous --underlying Si --interval 1m --from 2026-03-13 --
 MVP behavior:
 
 - только `adjustment_method="none"`;
+- canonical symbol включает interval: `MOEX:<underlying>:CONT:<interval>`, например `MOEX:Si:CONT:1m`;
 - synthetic candles получают `instrument_id="continuous:<underlying>"`;
 - components сохраняют, какой contract использовался на диапазоне;
 - roll events сохраняются отдельно;

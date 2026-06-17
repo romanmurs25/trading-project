@@ -38,11 +38,11 @@ def spec(symbol: str, expiry: date) -> ContractSpec:
     )
 
 
-def candle(symbol: str, ts_start: datetime, close: str) -> Candle:
+def candle(symbol: str, ts_start: datetime, close: str, interval: str = "1m") -> Candle:
     return Candle(
         instrument_id=f"moex:{symbol}",
         venue=Venue.MOEX,
-        interval="1m",
+        interval=interval,
         ts_start=ts_start,
         ts_end=ts_start + timedelta(minutes=1),
         open=Decimal(close),
@@ -71,11 +71,45 @@ def test_continuous_series_combines_contracts_around_roll_date() -> None:
         roll_rule=RollRule(roll_days_before_expiry=5),
     )
 
-    assert series.canonical_symbol == "MOEX:Si:CONT"
+    assert series.canonical_symbol == "MOEX:Si:CONT:1m"
     assert [item.instrument_id for item in candles] == ["continuous:Si", "continuous:Si"]
     assert [item.close for item in candles] == [Decimal("100"), Decimal("200")]
     assert len(components) == 2
+    assert components[0].instrument_id == "moex:SiH6"
+    assert components[0].canonical_symbol == "MOEX:SiH6"
     assert len(events) == 1
+
+
+def test_continuous_series_canonical_symbol_includes_interval() -> None:
+    h = instrument("SiH6", date(2026, 3, 19))
+    contract_specs = [spec("SiH6", date(2026, 3, 19))]
+
+    one_minute, _components_1m, _candles_1m, _events_1m = build_continuous_futures_series(
+        underlying_symbol="Si",
+        instruments=[h],
+        contract_specs=contract_specs,
+        candles_by_instrument={h.id: [candle("SiH6", datetime(2026, 3, 13, 7, 0, tzinfo=UTC), "100")]},
+        start=datetime(2026, 3, 13, tzinfo=UTC),
+        end=datetime(2026, 3, 14, tzinfo=UTC),
+        interval="1m",
+        roll_rule=RollRule(),
+    )
+    ten_minute, _components_10m, _candles_10m, _events_10m = build_continuous_futures_series(
+        underlying_symbol="Si",
+        instruments=[h],
+        contract_specs=contract_specs,
+        candles_by_instrument={
+            h.id: [candle("SiH6", datetime(2026, 3, 13, 7, 0, tzinfo=UTC), "100", interval="10m")]
+        },
+        start=datetime(2026, 3, 13, tzinfo=UTC),
+        end=datetime(2026, 3, 14, tzinfo=UTC),
+        interval="10m",
+        roll_rule=RollRule(),
+    )
+
+    assert one_minute.canonical_symbol == "MOEX:Si:CONT:1m"
+    assert ten_minute.canonical_symbol == "MOEX:Si:CONT:10m"
+    assert one_minute.canonical_symbol != ten_minute.canonical_symbol
 
 
 def test_unsupported_adjustment_method_rejected() -> None:

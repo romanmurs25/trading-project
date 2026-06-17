@@ -94,8 +94,8 @@ def test_cli_build_continuous_builds_and_writes(monkeypatch) -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["canonical_symbol"] == "MOEX:Si:CONT"
+    assert payload["canonical_symbol"] == "MOEX:Si:CONT:1m"
     assert payload["candles_count"] == 2
     assert payload["components_count"] == 2
     assert payload["written"] is True
-    assert storage.get_continuous_series_by_canonical_symbol("MOEX:Si:CONT") is not None
+    assert storage.get_continuous_series_by_canonical_symbol("MOEX:Si:CONT:1m") is not None

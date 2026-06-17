@@ -26,7 +26,7 @@ def series() -> ContinuousSeries:
         id="series-1",
         venue="MOEX",
         underlying_symbol="Si",
-        canonical_symbol="MOEX:Si:CONT",
+        canonical_symbol="MOEX:Si:CONT:1m",
         interval="1m",
         roll_rule={"roll_days_before_expiry": 5},
         adjustment_method="none",
@@ -77,7 +77,7 @@ def test_in_memory_save_and_get_continuous_series_and_components() -> None:
     storage.save_continuous_series_components([continuous_component])
 
     assert storage.get_continuous_series("series-1") == continuous_series
-    assert storage.get_continuous_series_by_canonical_symbol("MOEX:Si:CONT") == continuous_series
+    assert storage.get_continuous_series_by_canonical_symbol("MOEX:Si:CONT:1m") == continuous_series
     assert storage.load_continuous_series_components("series-1") == [continuous_component]
 
 

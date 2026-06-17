@@ -87,7 +87,8 @@ trading data build-continuous --underlying Si --interval 1m --from 2026-03-13 --
 ```
 
 `build-continuous` использует только сохранённые instruments/specs/candles. MVP поддерживает только
-`adjustment_method="none"` и сохраняет synthetic candles с `instrument_id="continuous:<underlying>"`.
+`adjustment_method="none"`, создаёт canonical symbol формата `MOEX:<underlying>:CONT:<interval>` и
+сохраняет synthetic candles с `instrument_id="continuous:<underlying>"`.
 
 ## DB-backed backtest
 
