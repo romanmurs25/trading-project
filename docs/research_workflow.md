@@ -62,6 +62,21 @@ sessions, выходные, clearing breaks и contract-specific calendars. Дл
 используйте gate аккуратно или запускайте exploratory runs с `--allow-data-quality-warnings`, пока не
 появится session-aware quality gate.
 
+Cycle 6 добавляет опциональный session-aware gate:
+
+```bash
+trading research run \
+  --strategy opening_range_breakout \
+  --canonical-symbol MOEX:SiH6 \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02 \
+  --session-aware-quality
+```
+
+При включении `--session-aware-quality` `quality_report` сохраняет `quality_mode=session_aware`.
+По умолчанию остаётся старый `continuous_time` gate, чтобы не ломать существующие сценарии.
+
 ## Persistence
 
 Research workflow сохраняет:
@@ -119,6 +134,8 @@ Cycle 5 генерирует splits, но не запускает полноце
 - Reports пока общие, не strategy-specific.
 - Missing-interval gate пока не session-aware: не учитывает MOEX sessions, выходные, clearing breaks и
   contract-specific calendars.
+- Session-aware gate использует configurable MVP MOEX templates, не официальный production calendar.
+- Continuous futures MVP пока не делает back-adjustment и не использует liquidity/open-interest roll.
 
 ## Next step
 

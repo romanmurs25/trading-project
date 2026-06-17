@@ -3,10 +3,15 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any
 
+from trading_core.analytics.session_quality import (
+    SessionAwareDataQualityGateConfig,
+    evaluate_session_aware_data_quality_gate,
+)
 from trading_core.backtest.engine import BacktestEngine, BacktestResult
 from trading_core.domain.enums import TradingMode, Venue
 from trading_core.domain.errors import DataValidationError
 from trading_core.domain.models import BacktestRun, Candle, Instrument, RiskConfig, utc_now
+from trading_core.market.calendar import MarketCalendarService
 from trading_core.ports.backtest_broker import BacktestBrokerPort
 from trading_core.ports.storage import StoragePort
 from trading_core.research.data_quality_gate import DataQualityGateConfig, evaluate_data_quality_gate
@@ -43,6 +48,9 @@ class ResearchRunner:
         parameter_grid: dict[str, list[Any]],
         initial_cash: Decimal,
         data_quality_gate_config: DataQualityGateConfig,
+        quality_mode: str = "continuous_time",
+        session_calendar: MarketCalendarService | None = None,
+        session_data_quality_gate_config: SessionAwareDataQualityGateConfig | None = None,
         max_combinations: int = 500,
     ) -> ResearchRunSummary:
         get_strategy_metadata(strategy_id)
@@ -51,7 +59,28 @@ class ResearchRunner:
             raise DataValidationError(f"instrument not found: {canonical_symbol}")
 
         candles = self.storage.load_candles(instrument.id, interval, start, end)
-        gate_decision = evaluate_data_quality_gate(candles, interval, data_quality_gate_config)
+        if quality_mode == "session_aware":
+            if session_calendar is None:
+                raise DataValidationError("session-aware quality requires market calendar")
+            session_gate_decision = evaluate_session_aware_data_quality_gate(
+                candles,
+                interval,
+                session_calendar,
+                start,
+                end,
+                session_data_quality_gate_config or SessionAwareDataQualityGateConfig(),
+            )
+            gate_approved = session_gate_decision.approved
+            gate_reason = session_gate_decision.reason
+            quality_report = session_gate_decision.report.model_dump(mode="json")
+        else:
+            continuous_gate_decision = evaluate_data_quality_gate(
+                candles, interval, data_quality_gate_config
+            )
+            gate_approved = continuous_gate_decision.approved
+            gate_reason = continuous_gate_decision.reason
+            quality_report = continuous_gate_decision.report.model_dump(mode="json")
+        quality_report["quality_mode"] = quality_mode
         combinations = parse_parameter_grid(parameter_grid, max_combinations=max_combinations)
         run = ResearchRun(
             strategy_id=strategy_id,
@@ -66,17 +95,17 @@ class ResearchRunner:
         )
         self.storage.save_research_run(run)
 
-        if not gate_decision.approved:
+        if not gate_approved:
             failed_result = self._failed_result(
                 run,
                 params={},
-                quality_report=gate_decision.report.model_dump(mode="json"),
-                error_message=gate_decision.reason,
+                quality_report=quality_report,
+                error_message=gate_reason,
             )
             self.storage.save_research_backtest_result(failed_result)
             failed_run = run.model_copy(update={"status": ResearchStatus.FAILED, "completed_at": utc_now()})
             self.storage.save_research_run(failed_run)
-            return self._summary(failed_run, [failed_result], len(combinations), [gate_decision.reason])
+            return self._summary(failed_run, [failed_result], len(combinations), [gate_reason])
 
         results: list[ResearchBacktestResult] = []
         for params in combinations:
@@ -87,13 +116,13 @@ class ResearchRunner:
                     candles=candles,
                     params=params,
                     initial_cash=initial_cash,
-                    quality_report=gate_decision.report.model_dump(mode="json"),
+                    quality_report=quality_report,
                 )
             except Exception as exc:
                 result = self._failed_result(
                     run,
                     params=params,
-                    quality_report=gate_decision.report.model_dump(mode="json"),
+                    quality_report=quality_report,
                     error_message=str(exc),
                 )
                 self.storage.save_research_backtest_result(result)

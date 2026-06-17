@@ -10,6 +10,8 @@ MVP использует clean/hexagonal architecture внутри Python-мон
 - `trading_core.execution` содержит state machine и idempotency helpers.
 - `trading_core.strategy` содержит чистые стратегии, которые выпускают только `Signal`.
 - `trading_core.backtest` соединяет стратегию, риск и broker simulator через `BacktestBrokerPort`.
+- `trading_core.market` описывает market sessions, calendar classification, futures roll и continuous series
+  для research/backtest workflows.
 - `adapters` реализуют или подготавливают внешние интеграции.
 - `apps` собирают ядро и адаптеры в API/CLI.
 
@@ -86,3 +88,25 @@ ResearchRun request
 
 API research endpoints MVP выполняются синхронно и используют `app.state.storage`. Они не делают внешних
 сетевых запросов и не добавляют live execution path.
+
+## MOEX market realism
+
+Cycle 6 добавляет market-structure слой без live-streaming и без broker execution:
+
+```text
+MOEX configurable session templates -> MarketCalendarService -> session-aware quality
+Instrument/ContractSpec registry -> ContractChain -> RollRule -> ContinuousSeries MVP
+Stored candles -> continuous-futures build -> storage -> research/backtest
+```
+
+MOEX futures session templates находятся в `trading_core.market.moex_templates`. Это configurable MVP
+defaults, а не официальная production-версия календаря биржи. `MarketCalendarService` хранит generated
+session start/end в UTC, классифицирует timestamps half-open интервалами и строит expected candle timestamps
+только внутри trading sessions.
+
+`analytics.session_quality` отличается от continuous-time quality: gaps через ночь, выходные и clearing
+breaks не считаются missing candles. Candles вне trading sessions считаются unexpected out-of-session.
+
+Continuous futures MVP использует `ContractSpec.expiry_date` / `last_trade_date`, `RollRule` и сохранённые
+candles. Поддерживается только `adjustment_method="none"`; back-adjustment, liquidity/open-interest roll и
+точная PnL attribution by session пока не реализованы.

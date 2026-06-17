@@ -76,7 +76,13 @@ trading instruments get --canonical-symbol MOEX:SiH6
 trading data sync-moex-instruments
 trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
 trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading data quality-session-aware --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading market sessions --from 2026-01-05 --to 2026-01-06 --write
+trading futures chain --underlying Si
+trading futures select-front --underlying Si --as-of 2026-03-16
+trading data build-continuous --underlying Si --interval 1m --from 2026-03-13 --to 2026-03-17 --write
 trading research run --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --param opening_range_minutes=5,15
+trading research run --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --session-aware-quality
 trading research report --research-run-id <id> --format markdown
 trading research compare --research-run-id <id> --sort-by profit_factor
 trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
@@ -160,6 +166,18 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 - Добавлена Markdown/JSON report generation.
 - Подробнее: [docs/research_workflow.md](docs/research_workflow.md).
 
+## Что добавлено в Cycle 6
+
+- Добавлен `trading_core.market`: MOEX futures session templates, calendar service, contract roll model,
+  continuous futures MVP и execution cost config.
+- Добавлен session-aware data-quality report/gate: overnight/weekend/clearing gaps не считаются missing.
+- Добавлены storage-модели, repository methods и Alembic migration `20260617_0004_market_sessions_continuous`
+  для market sessions, continuous series/components и roll events.
+- Добавлены CLI/API для генерации sessions, session-aware quality, futures chain/front-contract selection и
+  continuous futures build.
+- Research workflow получил опциональный `--session-aware-quality` и execution-cost flags.
+- Подробнее: [docs/moex_market_realism.md](docs/moex_market_realism.md).
+
 ## Что не коммитить
 
 - Виртуальные окружения: `.venv/`, локальные venv в корне проекта.
@@ -201,5 +219,5 @@ MVP строит проверяемое ядро. Kafka, Java, Kubernetes и м�
 
 ## Следующий цикл
 
-Следующий рекомендуемый цикл: continuous futures / contract roll, richer slippage/execution model и
-strategy-specific research reports.
+Следующий рекомендуемый цикл: официальный MOEX calendar integration, session-aware research reports,
+liquidity/open-interest roll rules, back-adjusted continuous futures и более реалистичная модель исполнения.

@@ -11,11 +11,21 @@ from adapters.paper.broker import PaperBroker
 from storage.in_memory import InMemoryStorage
 from storage.sqlalchemy_repositories import SQLAlchemyStorage
 from trading_core.analytics.data_quality import analyze_candle_series
+from trading_core.analytics.session_quality import (
+    SessionAwareDataQualityGateConfig,
+    analyze_candle_series_session_aware,
+)
 from trading_core.backtest.engine import BacktestEngine
 from trading_core.config import AppConfig
 from trading_core.domain.enums import AssetClass, TradingMode, Venue
 from trading_core.domain.errors import DataValidationError
 from trading_core.domain.models import BacktestRun, Candle, ContractSpec, DomainModel, Instrument, RiskConfig
+from trading_core.market.calendar import MarketCalendarService
+from trading_core.market.continuous import build_continuous_futures_series
+from trading_core.market.execution_costs import BacktestExecutionCostConfig
+from trading_core.market.moex_templates import default_moex_futures_session_templates
+from trading_core.market.roll import ContractChain, RollRule, build_contract_chain, select_front_contract
+from trading_core.market.sessions import SessionType
 from trading_core.ports.storage import StoragePort
 from trading_core.research.data_quality_gate import DataQualityGateConfig
 from trading_core.research.reporting import build_markdown_research_report, build_research_report
@@ -34,6 +44,8 @@ db_app = typer.Typer(help="Database helpers")
 data_app = typer.Typer(help="Market data helpers")
 instruments_app = typer.Typer(help="Instrument registry")
 research_app = typer.Typer(help="Research workflows")
+market_app = typer.Typer(help="Market calendar helpers")
+futures_app = typer.Typer(help="Futures contract helpers")
 
 _kill_switch = KillSwitch(AppConfig().risk)
 
@@ -95,6 +107,9 @@ def run_db_backtest(
     to_date: str = typer.Option(..., "--to"),
     storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
     initial_cash: str = typer.Option("100000", "--initial-cash"),
+    commission_rate: str = typer.Option("0", "--commission-rate"),
+    slippage_ticks: str = typer.Option("0", "--slippage-ticks"),
+    spread_bps: str = typer.Option("0", "--spread-bps"),
 ) -> None:
     target_storage = _resolve_storage(storage)
     instrument = target_storage.get_instrument_by_canonical_symbol(canonical_symbol)
@@ -108,6 +123,11 @@ def run_db_backtest(
         raise typer.BadParameter(f"no candles found for {canonical_symbol} {interval} {from_date}..{to_date}")
 
     parsed_initial_cash = _parse_decimal_option(initial_cash, "initial-cash")
+    execution_cost_config = BacktestExecutionCostConfig(
+        commission_rate=_parse_decimal_option(commission_rate, "commission-rate"),
+        slippage_ticks=_parse_decimal_option(slippage_ticks, "slippage-ticks"),
+        spread_bps=_parse_decimal_option(spread_bps, "spread-bps"),
+    )
     strategy = create_strategy(strategy_id)
     risk_config = RiskConfig(
         trading_mode=TradingMode.PAPER,
@@ -118,7 +138,11 @@ def run_db_backtest(
     engine = BacktestEngine(
         strategy=strategy,
         risk_engine=RiskEngine(risk_config, KillSwitch(risk_config)),
-        broker=PaperBroker(initial_cash=parsed_initial_cash),
+        broker=PaperBroker(
+            initial_cash=parsed_initial_cash,
+            commission_rate=execution_cost_config.commission_rate,
+            slippage=execution_cost_config.slippage_ticks,
+        ),
     )
     result = engine.run(candles=paper_candles, instrument=paper_instrument)
     run = BacktestRun(
@@ -149,6 +173,7 @@ def run_db_backtest(
             "start": start.isoformat(),
             "end": end.isoformat(),
             "candles_count": len(candles),
+            "execution_cost_config": execution_cost_config.model_dump(mode="json"),
             "metrics": {key: str(value) for key, value in result.metrics.items()},
         }
     )
@@ -338,6 +363,151 @@ def data_quality(
     )
 
 
+@market_app.command("sessions")
+def market_sessions(
+    from_date: str = typer.Option(..., "--from"),
+    to_date: str = typer.Option(..., "--to"),
+    venue: Literal["MOEX"] = typer.Option("MOEX", "--venue"),
+    market: str = typer.Option("forts", "--market"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    write: bool = typer.Option(False, "--write"),
+) -> None:
+    calendar = _default_moex_futures_calendar()
+    start = _parse_cli_date(from_date)
+    end = _parse_cli_date(to_date)
+    sessions = [
+        session
+        for session in calendar.generate_sessions(start, end)
+        if session.venue == Venue(venue) and session.market == market
+    ]
+    if write:
+        _resolve_storage(storage).save_market_sessions(sessions)
+    _echo_json(
+        {
+            "sessions_count": len(sessions),
+            "trading_sessions_count": sum(1 for session in sessions if session.is_trading),
+            "clearing_sessions_count": sum(
+                1 for session in sessions if session.session_type == SessionType.CLEARING
+            ),
+            "storage": storage,
+            "written": write,
+            "sessions": [_model_json(session) for session in sessions],
+        }
+    )
+
+
+@data_app.command("quality-session-aware")
+def data_quality_session_aware(
+    canonical_symbol: str = typer.Option(..., "--canonical-symbol"),
+    interval: str = typer.Option("1m", "--interval"),
+    from_date: str = typer.Option(..., "--from"),
+    to_date: str = typer.Option(..., "--to"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    instrument = target_storage.get_instrument_by_canonical_symbol(canonical_symbol)
+    if instrument is None:
+        raise typer.BadParameter(f"instrument not found: {canonical_symbol}")
+    start = _parse_cli_date(from_date)
+    end = _parse_cli_date(to_date)
+    candles = target_storage.load_candles(instrument.id, interval, start, end)
+    report = analyze_candle_series_session_aware(
+        candles,
+        interval,
+        _default_moex_futures_calendar(),
+        start,
+        end,
+    )
+    _echo_json(
+        {
+            "canonical_symbol": canonical_symbol,
+            "instrument_id": instrument.id,
+            "interval": interval,
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "quality_mode": "session_aware",
+            "report": _model_json(report),
+        }
+    )
+
+
+@futures_app.command("chain")
+def futures_chain(
+    underlying: str = typer.Option(..., "--underlying"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    chain = _contract_chain(_resolve_storage(storage), underlying)
+    _echo_json(
+        {
+            "underlying_symbol": underlying,
+            "contracts": [_model_json(instrument) for instrument in chain.instruments],
+            "warnings": _chain_warnings(chain.contract_specs),
+        }
+    )
+
+
+@futures_app.command("select-front")
+def futures_select_front(
+    underlying: str = typer.Option(..., "--underlying"),
+    as_of: str = typer.Option(..., "--as-of"),
+    roll_days_before_expiry: int = typer.Option(5, "--roll-days-before-expiry"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+) -> None:
+    chain = _contract_chain(_resolve_storage(storage), underlying)
+    decision = select_front_contract(
+        chain,
+        _parse_cli_date(as_of),
+        RollRule(roll_days_before_expiry=roll_days_before_expiry),
+    )
+    _echo_json(_model_json(decision))
+
+
+@data_app.command("build-continuous")
+def data_build_continuous(
+    underlying: str = typer.Option(..., "--underlying"),
+    interval: str = typer.Option("1m", "--interval"),
+    from_date: str = typer.Option(..., "--from"),
+    to_date: str = typer.Option(..., "--to"),
+    roll_days_before_expiry: int = typer.Option(5, "--roll-days-before-expiry"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    write: bool = typer.Option(False, "--write"),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    start = _parse_cli_date(from_date)
+    end = _parse_cli_date(to_date)
+    chain = _contract_chain(target_storage, underlying)
+    candles_by_instrument = {
+        instrument.id: target_storage.load_candles(instrument.id, interval, start, end)
+        for instrument in chain.instruments
+    }
+    series, components, candles, roll_events = build_continuous_futures_series(
+        underlying_symbol=underlying,
+        instruments=chain.instruments,
+        contract_specs=chain.contract_specs,
+        candles_by_instrument=candles_by_instrument,
+        start=start,
+        end=end,
+        interval=interval,
+        roll_rule=RollRule(roll_days_before_expiry=roll_days_before_expiry),
+    )
+    if write:
+        target_storage.save_continuous_series(series)
+        target_storage.save_continuous_series_components(components)
+        target_storage.save_roll_events(roll_events)
+        target_storage.save_candles(candles)
+    _echo_json(
+        {
+            "continuous_series_id": series.id,
+            "canonical_symbol": series.canonical_symbol,
+            "components_count": len(components),
+            "candles_count": len(candles),
+            "roll_events_count": len(roll_events),
+            "written": write,
+            "warnings": series.metadata.get("warnings", []),
+        }
+    )
+
+
 @research_app.command("run")
 def research_run(
     strategy_id: str = typer.Option(..., "--strategy"),
@@ -353,11 +523,24 @@ def research_run(
         "--fail-on-data-quality/--allow-data-quality-warnings",
     ),
     max_combinations: int = typer.Option(500, "--max-combinations"),
+    session_aware_quality: bool = typer.Option(False, "--session-aware-quality"),
+    commission_rate: str = typer.Option("0", "--commission-rate"),
+    slippage_ticks: str = typer.Option("0", "--slippage-ticks"),
+    spread_bps: str = typer.Option("0", "--spread-bps"),
 ) -> None:
     target_storage = _resolve_storage(storage)
+    execution_cost_config = BacktestExecutionCostConfig(
+        commission_rate=_parse_decimal_option(commission_rate, "commission-rate"),
+        slippage_ticks=_parse_decimal_option(slippage_ticks, "slippage-ticks"),
+        spread_bps=_parse_decimal_option(spread_bps, "spread-bps"),
+    )
     runner = ResearchRunner(
         storage=target_storage,
-        broker_factory=lambda cash: PaperBroker(initial_cash=cash),
+        broker_factory=lambda cash: PaperBroker(
+            initial_cash=cash,
+            commission_rate=execution_cost_config.commission_rate,
+            slippage=execution_cost_config.slippage_ticks,
+        ),
     )
     try:
         summary = runner.run(
@@ -369,6 +552,9 @@ def research_run(
             parameter_grid=_parse_param_options(param or []),
             initial_cash=_parse_decimal_option(initial_cash, "initial-cash"),
             data_quality_gate_config=_data_quality_gate_config(fail_on_data_quality),
+            quality_mode="session_aware" if session_aware_quality else "continuous_time",
+            session_calendar=_default_moex_futures_calendar() if session_aware_quality else None,
+            session_data_quality_gate_config=_session_data_quality_gate_config(fail_on_data_quality),
             max_combinations=max_combinations,
         )
     except DataValidationError as exc:
@@ -557,6 +743,41 @@ def _data_quality_gate_config(fail_on_data_quality: bool) -> DataQualityGateConf
     )
 
 
+def _session_data_quality_gate_config(fail_on_data_quality: bool) -> SessionAwareDataQualityGateConfig:
+    if fail_on_data_quality:
+        return SessionAwareDataQualityGateConfig()
+    return SessionAwareDataQualityGateConfig(
+        fail_on_no_candles=False,
+        max_duplicates_count=1_000_000,
+        max_missing_expected_candles_count=1_000_000,
+        max_unexpected_out_of_session_count=1_000_000,
+        max_zero_volume_count=None,
+        allow_non_monotonic=True,
+    )
+
+
+def _default_moex_futures_calendar() -> MarketCalendarService:
+    return MarketCalendarService(default_moex_futures_session_templates())
+
+
+def _contract_chain(storage: StoragePort, underlying: str) -> ContractChain:
+    instruments = storage.list_instruments(venue=Venue.MOEX, asset_class=AssetClass.FUTURES)
+    contract_specs = [
+        spec
+        for instrument in instruments
+        if (spec := storage.get_contract_spec(instrument.id)) is not None
+    ]
+    return build_contract_chain(instruments, contract_specs, underlying)
+
+
+def _chain_warnings(contract_specs: list[ContractSpec]) -> list[str]:
+    warnings: list[str] = []
+    for spec in contract_specs:
+        if spec.metadata.get("spec_incomplete") is True:
+            warnings.append(f"contract spec incomplete: {spec.instrument_id}")
+    return warnings
+
+
 def _research_result_row(result: DomainModel) -> dict[str, object]:
     payload = _model_json(result)
     return {
@@ -648,6 +869,8 @@ app.add_typer(db_app, name="db")
 app.add_typer(data_app, name="data")
 app.add_typer(instruments_app, name="instruments")
 app.add_typer(research_app, name="research")
+app.add_typer(market_app, name="market")
+app.add_typer(futures_app, name="futures")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 from trading_core.domain.enums import AssetClass, Venue
@@ -17,6 +17,9 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
+from trading_core.market.roll import RollEvent
+from trading_core.market.sessions import MarketSession
 from trading_core.research.models import (
     BacktestEquityPoint,
     BacktestTradeRecord,
@@ -96,6 +99,35 @@ class StoragePort(Protocol):
     def save_backtest_trade_records(self, records: list[BacktestTradeRecord]) -> None: ...
 
     def load_backtest_trade_records(self, backtest_run_id: str) -> list[BacktestTradeRecord]: ...
+
+    def save_market_sessions(self, sessions: list[MarketSession]) -> None: ...
+
+    def load_market_sessions(
+        self,
+        venue: Venue | None = None,
+        market: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[MarketSession]: ...
+
+    def save_continuous_series(self, series: ContinuousSeries) -> None: ...
+
+    def get_continuous_series(self, series_id: str) -> ContinuousSeries | None: ...
+
+    def get_continuous_series_by_canonical_symbol(self, canonical_symbol: str) -> ContinuousSeries | None: ...
+
+    def save_continuous_series_components(self, components: list[ContinuousSeriesComponent]) -> None: ...
+
+    def load_continuous_series_components(self, series_id: str) -> list[ContinuousSeriesComponent]: ...
+
+    def save_roll_events(self, events: list[RollEvent]) -> None: ...
+
+    def load_roll_events(
+        self,
+        underlying_symbol: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[RollEvent]: ...
 
     def save_system_event(self, event: SystemEvent) -> None: ...
 
