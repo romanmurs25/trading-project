@@ -59,7 +59,30 @@ MOEX ISS securities payload -> Instrument/ContractSpec mapper -> StoragePort
 MOEX ISS candles payload -> Candle mapper -> StoragePort
 StoragePort -> backtest run-db -> PaperBroker + RiskEngine -> BacktestRun
 StoragePort -> data quality -> CandleQualityReport
+StoragePort -> research run -> DataQualityGate -> parameter grid -> BacktestEngine -> research results/report
 ```
 
 MOEX инструменты сохраняются с `Venue.MOEX`, но `backtest run-db` запускает PAPER-копию инструмента и свечей.
 Это сохраняет безопасность RiskEngine: исторические MOEX-данные используются как dataset, а не как live venue.
+
+## Research workflow
+
+`trading_core.research` содержит модели, parameter grid, data-quality gate, runner, reporting и walk-forward
+splits. `ResearchRunner` зависит от `StoragePort`, `BacktestEngine`, `RiskEngine` и injected
+`broker_factory`. Он не импортирует `adapters.paper`; CLI/API собирают runner с `PaperBroker` на app-слое.
+
+Research flow:
+
+```text
+ResearchRun request
+  -> load Instrument/Candles from StoragePort
+  -> DataQualityGate
+  -> parse parameter grid
+  -> create Strategy via registry
+  -> BacktestEngine + PaperBroker factory
+  -> save BacktestRun, ResearchBacktestResult, equity curve, trade records
+  -> JSON/Markdown report and comparison
+```
+
+API research endpoints MVP выполняются синхронно и используют `app.state.storage`. Они не делают внешних
+сетевых запросов и не добавляют live execution path.

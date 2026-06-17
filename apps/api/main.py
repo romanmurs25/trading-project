@@ -1,7 +1,17 @@
 from fastapi import FastAPI
 from storage.in_memory import InMemoryStorage
 
-from apps.api.routers import backtests, health, instruments, journal, market_data, orders, risk, strategies
+from apps.api.routers import (
+    backtests,
+    health,
+    instruments,
+    journal,
+    market_data,
+    orders,
+    research,
+    risk,
+    strategies,
+)
 
 
 def create_app() -> FastAPI:
@@ -12,6 +22,7 @@ def create_app() -> FastAPI:
     application.include_router(market_data.router)
     application.include_router(backtests.router)
     application.include_router(strategies.router)
+    application.include_router(research.router)
     application.include_router(risk.router)
     application.include_router(orders.router)
     application.include_router(journal.router)

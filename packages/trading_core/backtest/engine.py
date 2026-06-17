@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import cast
 
 from trading_core.backtest.metrics import expectancy, max_drawdown, profit_factor, win_rate
 from trading_core.domain.enums import OrderType, Side, SignalDirection, TimeInForce
 from trading_core.domain.models import Candle, Instrument, OrderIntent, RiskContext, Signal
-from trading_core.ports.backtest_broker import BacktestBrokerPort
+from trading_core.ports.backtest_broker import BacktestBrokerPort, ClosedTradeProvider
+from trading_core.research.models import BacktestEquityPoint, BacktestTradeRecord
 from trading_core.risk.engine import RiskEngine
 from trading_core.strategy.base import Strategy
 
@@ -26,6 +28,8 @@ class BacktestResult:
     executions_count: int
     exposure_bars: int
     metrics: dict[str, Decimal]
+    equity_curve: list[BacktestEquityPoint]
+    trade_records: list[BacktestTradeRecord]
 
 
 @dataclass
@@ -43,7 +47,7 @@ class BacktestEngine:
 
     def run(self, candles: list[Candle], instrument: Instrument) -> BacktestResult:
         history: list[Candle] = []
-        equity_curve: list[Decimal] = [self.broker.initial_cash]
+        equity_values: list[tuple[Candle | None, Decimal]] = [(None, self.broker.initial_cash)]
         rejected_signals_count = 0
         exposure_bars = 0
         active_exit_plan: ActiveExitPlan | None = None
@@ -62,7 +66,7 @@ class BacktestEngine:
             history.append(candle)
             signal = self.strategy.on_candle(candle, history)
             if signal is None or self._has_open_position(instrument.id):
-                equity_curve.append(self.broker.final_equity())
+                equity_values.append((candle, self.broker.final_equity()))
                 continue
 
             intent = self._intent_from_signal(signal, instrument)
@@ -88,11 +92,11 @@ class BacktestEngine:
                 )
             else:
                 rejected_signals_count += 1
-            equity_curve.append(self.broker.final_equity())
+            equity_values.append((candle, self.broker.final_equity()))
 
         if candles and self._has_open_position(instrument.id):
             self._force_close_position(candles[-1], instrument)
-            equity_curve.append(self.broker.final_equity())
+            equity_values.append((candles[-1], self.broker.final_equity()))
 
         final_equity = self.broker.final_equity()
         total_pnl = final_equity - self.broker.initial_cash
@@ -100,7 +104,8 @@ class BacktestEngine:
         result_profit_factor = profit_factor(trade_pnls)
         result_expectancy = expectancy(trade_pnls)
         result_win_rate = win_rate(trade_pnls)
-        result_max_drawdown = max_drawdown(equity_curve)
+        equity_points = self._equity_points(equity_values)
+        result_max_drawdown = max_drawdown([point.equity for point in equity_points])
         wins = [pnl for pnl in trade_pnls if pnl > 0]
         losses = [pnl for pnl in trade_pnls if pnl < 0]
         avg_win = sum(wins, Decimal("0")) / Decimal(len(wins)) if wins else Decimal("0")
@@ -138,6 +143,8 @@ class BacktestEngine:
                 "executions_count": Decimal(executions_count),
                 "exposure_bars": Decimal(exposure_bars),
             },
+            equity_curve=equity_points,
+            trade_records=self._trade_records(),
         )
 
     def _intent_from_signal(self, signal: Signal, instrument: Instrument) -> OrderIntent:
@@ -213,3 +220,49 @@ class BacktestEngine:
     def _has_open_position(self, instrument_id: str) -> bool:
         position = self.broker.get_position(instrument_id)
         return position is not None and position.qty != 0
+
+    def _equity_points(self, equity_values: list[tuple[Candle | None, Decimal]]) -> list[BacktestEquityPoint]:
+        points: list[BacktestEquityPoint] = []
+        peak: Decimal | None = None
+        first_candle = next((candle for candle, _equity in equity_values if candle is not None), None)
+        for candle, equity in equity_values:
+            peak = equity if peak is None else max(peak, equity)
+            drawdown = Decimal("0") if peak <= 0 else (peak - equity) / peak
+            ts = (
+                candle.ts_end
+                if candle is not None
+                else first_candle.ts_start
+                if first_candle is not None
+                else None
+            )
+            if ts is None:
+                continue
+            points.append(
+                BacktestEquityPoint(
+                    backtest_run_id="pending",
+                    ts=ts,
+                    equity=equity,
+                    drawdown=drawdown,
+                )
+            )
+        return points
+
+    def _trade_records(self) -> list[BacktestTradeRecord]:
+        if not hasattr(self.broker, "get_closed_trades"):
+            return []
+        closed_trade_provider = cast(ClosedTradeProvider, self.broker)
+        return [
+            BacktestTradeRecord(
+                backtest_run_id="pending",
+                instrument_id=trade.instrument_id,
+                side=trade.side_closed,
+                entry_price=trade.entry_price,
+                exit_price=trade.exit_price,
+                qty=trade.qty,
+                gross_pnl=trade.gross_pnl,
+                net_pnl=trade.net_pnl,
+                r_multiple=None,
+                reason="paper closed trade",
+            )
+            for trade in closed_trade_provider.get_closed_trades()
+        ]

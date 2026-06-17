@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
-from trading_core.domain.enums import AssetClass, Venue
+from trading_core.domain.enums import AssetClass, Side, Venue
 from trading_core.domain.models import (
     AuditLog,
     BacktestRun,
@@ -20,10 +20,19 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.research.models import (
+    BacktestEquityPoint,
+    BacktestTradeRecord,
+    ResearchBacktestResult,
+    ResearchRun,
+    ResearchStatus,
+)
 
 from storage.sqlalchemy_models import (
     AuditLogRow,
+    BacktestEquityPointRow,
     BacktestRunRow,
+    BacktestTradeRecordRow,
     CandleRow,
     ContractSpecRow,
     ExecutionRow,
@@ -31,6 +40,8 @@ from storage.sqlalchemy_models import (
     OrderIntentRow,
     OrderRow,
     PositionRow,
+    ResearchBacktestResultRow,
+    ResearchRunRow,
     RiskDecisionRow,
     SignalRow,
     SystemEventRow,
@@ -286,6 +297,81 @@ class SQLAlchemyStorage:
                 )
             )
 
+    def save_research_run(self, run: ResearchRun) -> None:
+        with self.session_factory.begin() as session:
+            session.merge(_research_run_row(run))
+
+    def get_research_run(self, run_id: str) -> ResearchRun | None:
+        with self.session_factory() as session:
+            row = session.scalar(select(ResearchRunRow).where(ResearchRunRow.id == run_id))
+            return _research_run_from_row(row) if row is not None else None
+
+    def list_research_runs(
+        self,
+        strategy_id: str | None = None,
+        canonical_symbol: str | None = None,
+        status: ResearchStatus | None = None,
+    ) -> list[ResearchRun]:
+        statement = select(ResearchRunRow)
+        if strategy_id is not None:
+            statement = statement.where(ResearchRunRow.strategy_id == strategy_id)
+        if canonical_symbol is not None:
+            statement = statement.where(ResearchRunRow.canonical_symbol == canonical_symbol)
+        if status is not None:
+            statement = statement.where(ResearchRunRow.status == status.value)
+        statement = statement.order_by(ResearchRunRow.created_at)
+        with self.session_factory() as session:
+            return [_research_run_from_row(row) for row in session.scalars(statement).all()]
+
+    def save_research_backtest_result(self, result: ResearchBacktestResult) -> None:
+        with self.session_factory.begin() as session:
+            session.merge(_research_backtest_result_row(result))
+
+    def list_research_backtest_results(self, research_run_id: str) -> list[ResearchBacktestResult]:
+        statement = (
+            select(ResearchBacktestResultRow)
+            .where(ResearchBacktestResultRow.research_run_id == research_run_id)
+            .order_by(ResearchBacktestResultRow.created_at)
+        )
+        with self.session_factory() as session:
+            return [
+                _research_backtest_result_from_row(row)
+                for row in session.scalars(statement).all()
+            ]
+
+    def get_research_backtest_result(self, result_id: str) -> ResearchBacktestResult | None:
+        with self.session_factory() as session:
+            row = session.scalar(
+                select(ResearchBacktestResultRow).where(ResearchBacktestResultRow.id == result_id)
+            )
+            return _research_backtest_result_from_row(row) if row is not None else None
+
+    def save_backtest_equity_points(self, points: list[BacktestEquityPoint]) -> None:
+        with self.session_factory.begin() as session:
+            for point in points:
+                session.merge(_backtest_equity_point_row(point))
+
+    def load_backtest_equity_points(self, backtest_run_id: str) -> list[BacktestEquityPoint]:
+        statement = (
+            select(BacktestEquityPointRow)
+            .where(BacktestEquityPointRow.backtest_run_id == backtest_run_id)
+            .order_by(BacktestEquityPointRow.ts)
+        )
+        with self.session_factory() as session:
+            return [_backtest_equity_point_from_row(row) for row in session.scalars(statement).all()]
+
+    def save_backtest_trade_records(self, records: list[BacktestTradeRecord]) -> None:
+        with self.session_factory.begin() as session:
+            for record in records:
+                session.merge(_backtest_trade_record_row(record))
+
+    def load_backtest_trade_records(self, backtest_run_id: str) -> list[BacktestTradeRecord]:
+        statement = select(BacktestTradeRecordRow).where(
+            BacktestTradeRecordRow.backtest_run_id == backtest_run_id
+        )
+        with self.session_factory() as session:
+            return [_backtest_trade_record_from_row(row) for row in session.scalars(statement).all()]
+
     def save_system_event(self, event: SystemEvent) -> None:
         with self.session_factory.begin() as session:
             session.merge(
@@ -402,6 +488,145 @@ def _contract_spec_from_row(row: ContractSpecRow) -> ContractSpec:
         first_trade_date=row.first_trade_date,
         last_trade_date=row.last_trade_date,
         underlying_symbol=row.underlying_symbol,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _research_run_row(run: ResearchRun) -> ResearchRunRow:
+    payload = run.model_dump(mode="json")
+    return ResearchRunRow(
+        id=run.id,
+        strategy_id=run.strategy_id,
+        canonical_symbol=run.canonical_symbol,
+        instrument_id=run.instrument_id,
+        interval=run.interval,
+        start=run.start,
+        end=run.end,
+        parameter_grid=payload["parameter_grid"],
+        data_quality_gate=payload["data_quality_gate"],
+        status=run.status.value,
+        created_at=run.created_at,
+        completed_at=run.completed_at,
+        notes=run.notes,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _research_run_from_row(row: ResearchRunRow) -> ResearchRun:
+    return ResearchRun(
+        id=row.id,
+        strategy_id=row.strategy_id,
+        canonical_symbol=row.canonical_symbol,
+        instrument_id=row.instrument_id,
+        interval=row.interval,
+        start=_aware(row.start),
+        end=_aware(row.end),
+        parameter_grid=dict(row.parameter_grid or {}),
+        data_quality_gate=dict(row.data_quality_gate or {}),
+        status=ResearchStatus(row.status),
+        created_at=_aware(row.created_at),
+        completed_at=_aware(row.completed_at) if row.completed_at is not None else None,
+        notes=row.notes,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _research_backtest_result_row(result: ResearchBacktestResult) -> ResearchBacktestResultRow:
+    payload = result.model_dump(mode="json")
+    return ResearchBacktestResultRow(
+        id=result.id,
+        research_run_id=result.research_run_id,
+        backtest_run_id=result.backtest_run_id,
+        strategy_id=result.strategy_id,
+        canonical_symbol=result.canonical_symbol,
+        instrument_id=result.instrument_id,
+        interval=result.interval,
+        start=result.start,
+        end=result.end,
+        params=payload["params"],
+        metrics=payload["metrics"],
+        quality_report=payload["quality_report"],
+        status=result.status.value,
+        error_message=result.error_message,
+        created_at=result.created_at,
+    )
+
+
+def _research_backtest_result_from_row(row: ResearchBacktestResultRow) -> ResearchBacktestResult:
+    return ResearchBacktestResult(
+        id=row.id,
+        research_run_id=row.research_run_id,
+        backtest_run_id=row.backtest_run_id,
+        strategy_id=row.strategy_id,
+        canonical_symbol=row.canonical_symbol,
+        instrument_id=row.instrument_id,
+        interval=row.interval,
+        start=_aware(row.start),
+        end=_aware(row.end),
+        params=dict(row.params or {}),
+        metrics=dict(row.metrics or {}),
+        quality_report=dict(row.quality_report or {}),
+        status=ResearchStatus(row.status),
+        error_message=row.error_message,
+        created_at=_aware(row.created_at),
+    )
+
+
+def _backtest_equity_point_row(point: BacktestEquityPoint) -> BacktestEquityPointRow:
+    return BacktestEquityPointRow(
+        id=point.id,
+        backtest_run_id=point.backtest_run_id,
+        ts=point.ts,
+        equity=point.equity,
+        drawdown=point.drawdown,
+    )
+
+
+def _backtest_equity_point_from_row(row: BacktestEquityPointRow) -> BacktestEquityPoint:
+    return BacktestEquityPoint(
+        id=row.id,
+        backtest_run_id=row.backtest_run_id,
+        ts=_aware(row.ts),
+        equity=row.equity,
+        drawdown=row.drawdown,
+    )
+
+
+def _backtest_trade_record_row(record: BacktestTradeRecord) -> BacktestTradeRecordRow:
+    payload = record.model_dump(mode="json")
+    return BacktestTradeRecordRow(
+        id=record.id,
+        backtest_run_id=record.backtest_run_id,
+        instrument_id=record.instrument_id,
+        side=record.side.value,
+        entry_ts=record.entry_ts,
+        exit_ts=record.exit_ts,
+        entry_price=record.entry_price,
+        exit_price=record.exit_price,
+        qty=record.qty,
+        gross_pnl=record.gross_pnl,
+        net_pnl=record.net_pnl,
+        r_multiple=record.r_multiple,
+        reason=record.reason,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _backtest_trade_record_from_row(row: BacktestTradeRecordRow) -> BacktestTradeRecord:
+    return BacktestTradeRecord(
+        id=row.id,
+        backtest_run_id=row.backtest_run_id,
+        instrument_id=row.instrument_id,
+        side=Side(row.side),
+        entry_ts=_aware(row.entry_ts) if row.entry_ts is not None else None,
+        exit_ts=_aware(row.exit_ts) if row.exit_ts is not None else None,
+        entry_price=row.entry_price,
+        exit_price=row.exit_price,
+        qty=row.qty,
+        gross_pnl=row.gross_pnl,
+        net_pnl=row.net_pnl,
+        r_multiple=row.r_multiple,
+        reason=row.reason,
         metadata=dict(row.metadata_json or {}),
     )
 

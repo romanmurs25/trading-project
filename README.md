@@ -76,6 +76,10 @@ trading instruments get --canonical-symbol MOEX:SiH6
 trading data sync-moex-instruments
 trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
 trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading research run --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --param opening_range_minutes=5,15
+trading research report --research-run-id <id> --format markdown
+trading research compare --research-run-id <id> --sort-by profit_factor
+trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
 trading db check-config
 trading db init-placeholder
 ```
@@ -145,6 +149,17 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 - Добавлен отчёт качества свечей `trading data quality`.
 - Подробнее: [docs/moex_research_dataset.md](docs/moex_research_dataset.md).
 
+## Что добавлено в Cycle 5
+
+- Добавлен research workflow для повторяемой оценки стратегий.
+- Добавлены parameter grids, strategy metadata, data-quality gate и walk-forward splits.
+- `BacktestResult` теперь содержит equity curve и trade records.
+- Добавлены storage-модели, Alembic migration `20260617_0003_research_workflow` и repository methods для
+  research runs/results/equity/trades.
+- Добавлены CLI/API `research run/report/compare`.
+- Добавлена Markdown/JSON report generation.
+- Подробнее: [docs/research_workflow.md](docs/research_workflow.md).
+
 ## Что не коммитить
 
 - Виртуальные окружения: `.venv/`, локальные venv в корне проекта.
@@ -186,5 +201,5 @@ MVP строит проверяемое ядро. Kafka, Java, Kubernetes и м�
 
 ## Следующий цикл
 
-Следующий рекомендуемый цикл: DB-backed API endpoints, repository methods для orders/executions/backtest runs
-и первые интеграционные сценарии поверх PostgreSQL.
+Следующий рекомендуемый цикл: continuous futures / contract roll, richer slippage/execution model и
+strategy-specific research reports.

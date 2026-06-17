@@ -14,8 +14,13 @@ from trading_core.analytics.data_quality import analyze_candle_series
 from trading_core.backtest.engine import BacktestEngine
 from trading_core.config import AppConfig
 from trading_core.domain.enums import AssetClass, TradingMode, Venue
+from trading_core.domain.errors import DataValidationError
 from trading_core.domain.models import BacktestRun, Candle, ContractSpec, DomainModel, Instrument, RiskConfig
 from trading_core.ports.storage import StoragePort
+from trading_core.research.data_quality_gate import DataQualityGateConfig
+from trading_core.research.reporting import build_markdown_research_report, build_research_report
+from trading_core.research.runner import ResearchRunner
+from trading_core.research.walk_forward import create_walk_forward_splits
 from trading_core.risk.engine import RiskEngine
 from trading_core.risk.kill_switch import KillSwitch
 from trading_core.strategy.opening_range_breakout import OpeningRangeBreakoutStrategy
@@ -28,6 +33,7 @@ backtest_app = typer.Typer(help="Backtesting")
 db_app = typer.Typer(help="Database helpers")
 data_app = typer.Typer(help="Market data helpers")
 instruments_app = typer.Typer(help="Instrument registry")
+research_app = typer.Typer(help="Research workflows")
 
 _kill_switch = KillSwitch(AppConfig().risk)
 
@@ -332,6 +338,121 @@ def data_quality(
     )
 
 
+@research_app.command("run")
+def research_run(
+    strategy_id: str = typer.Option(..., "--strategy"),
+    canonical_symbol: str = typer.Option(..., "--canonical-symbol"),
+    interval: str = typer.Option("1m", "--interval"),
+    from_date: str = typer.Option(..., "--from"),
+    to_date: str = typer.Option(..., "--to"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    initial_cash: str = typer.Option("100000", "--initial-cash"),
+    param: list[str] | None = typer.Option(None, "--param"),
+    fail_on_data_quality: bool = typer.Option(
+        True,
+        "--fail-on-data-quality/--allow-data-quality-warnings",
+    ),
+    max_combinations: int = typer.Option(500, "--max-combinations"),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    runner = ResearchRunner(
+        storage=target_storage,
+        broker_factory=lambda cash: PaperBroker(initial_cash=cash),
+    )
+    try:
+        summary = runner.run(
+            strategy_id=strategy_id,
+            canonical_symbol=canonical_symbol,
+            interval=interval,
+            start=_parse_cli_date(from_date),
+            end=_parse_cli_date(to_date),
+            parameter_grid=_parse_param_options(param or []),
+            initial_cash=_parse_decimal_option(initial_cash, "initial-cash"),
+            data_quality_gate_config=_data_quality_gate_config(fail_on_data_quality),
+            max_combinations=max_combinations,
+        )
+    except DataValidationError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    _echo_json(_model_json(summary))
+
+
+@research_app.command("report")
+def research_report(
+    research_run_id: str = typer.Option(..., "--research-run-id"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    report_format: Literal["json", "markdown"] = typer.Option("json", "--format"),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    run = target_storage.get_research_run(research_run_id)
+    if run is None:
+        raise typer.BadParameter(f"research run not found: {research_run_id}")
+    results = target_storage.list_research_backtest_results(research_run_id)
+    if report_format == "markdown":
+        typer.echo(build_markdown_research_report(run, results))
+        return
+    report = build_research_report(run, results)
+    if not isinstance(report, dict):
+        raise typer.BadParameter("report formatter returned non-JSON output")
+    _echo_json(report)
+
+
+@research_app.command("compare")
+def research_compare(
+    research_run_id: str = typer.Option(..., "--research-run-id"),
+    storage: Literal["in-memory", "db"] = typer.Option("in-memory", "--storage"),
+    sort_by: Literal["profit_factor", "expectancy", "total_pnl", "max_drawdown"] = typer.Option(
+        "profit_factor",
+        "--sort-by",
+    ),
+) -> None:
+    target_storage = _resolve_storage(storage)
+    run = target_storage.get_research_run(research_run_id)
+    if run is None:
+        raise typer.BadParameter(f"research run not found: {research_run_id}")
+    results = target_storage.list_research_backtest_results(research_run_id)
+    rows = [_research_result_row(result) for result in results]
+    rows.sort(key=lambda row: _metric_decimal(row, sort_by), reverse=sort_by != "max_drawdown")
+    _echo_json(
+        {
+            "research_run_id": research_run_id,
+            "sort_by": sort_by,
+            "rows": rows,
+            "best_row": rows[0] if rows else None,
+            "warnings": [] if rows else ["no research results found"],
+        }
+    )
+
+
+@research_app.command("walk-forward-splits")
+def research_walk_forward_splits(
+    from_date: str = typer.Option(..., "--from"),
+    to_date: str = typer.Option(..., "--to"),
+    train_days: int = typer.Option(..., "--train-days"),
+    test_days: int = typer.Option(..., "--test-days"),
+    step_days: int = typer.Option(..., "--step-days"),
+) -> None:
+    splits = create_walk_forward_splits(
+        _parse_cli_date(from_date),
+        _parse_cli_date(to_date),
+        train_days=train_days,
+        test_days=test_days,
+        step_days=step_days,
+    )
+    _echo_json(
+        {
+            "splits": [
+                {
+                    "train_start": split.train_start.isoformat(),
+                    "train_end": split.train_end.isoformat(),
+                    "test_start": split.test_start.isoformat(),
+                    "test_end": split.test_end.isoformat(),
+                }
+                for split in splits
+            ]
+        }
+    )
+
+
 def _synthetic_instrument() -> Instrument:
     return Instrument(
         id="synthetic",
@@ -409,6 +530,56 @@ def _parse_decimal_option(value: str, option_name: str) -> Decimal:
         raise typer.BadParameter(f"{option_name} must be Decimal-compatible") from exc
 
 
+def _parse_param_options(values: list[str]) -> dict[str, list[str]]:
+    grid: dict[str, list[str]] = {}
+    for value in values:
+        if "=" not in value:
+            raise typer.BadParameter(f"invalid --param value: {value}")
+        key, raw_values = value.split("=", 1)
+        if not key:
+            raise typer.BadParameter("parameter name must not be empty")
+        items = [item for item in raw_values.split(",") if item != ""]
+        if not items:
+            raise typer.BadParameter(f"parameter values must not be empty: {key}")
+        grid[key] = items
+    return grid
+
+
+def _data_quality_gate_config(fail_on_data_quality: bool) -> DataQualityGateConfig:
+    if fail_on_data_quality:
+        return DataQualityGateConfig()
+    return DataQualityGateConfig(
+        fail_on_no_candles=False,
+        max_duplicates_count=1_000_000,
+        max_missing_intervals_count=1_000_000,
+        max_zero_volume_count=None,
+        allow_non_monotonic=True,
+    )
+
+
+def _research_result_row(result: DomainModel) -> dict[str, object]:
+    payload = _model_json(result)
+    return {
+        "id": payload["id"],
+        "backtest_run_id": payload["backtest_run_id"],
+        "status": payload["status"],
+        "params": payload["params"],
+        "metrics": payload["metrics"],
+        "error_message": payload["error_message"],
+    }
+
+
+def _metric_decimal(row: dict[str, object], metric_name: str) -> Decimal:
+    metrics = row.get("metrics", {})
+    if not isinstance(metrics, dict):
+        return Decimal("0")
+    raw = metrics.get(metric_name, "0")
+    try:
+        return Decimal(str(raw))
+    except (InvalidOperation, ValueError):
+        return Decimal("0")
+
+
 def _echo_backfill_result(
     symbol: str,
     interval: str,
@@ -476,6 +647,7 @@ app.add_typer(backtest_app, name="backtest")
 app.add_typer(db_app, name="db")
 app.add_typer(data_app, name="data")
 app.add_typer(instruments_app, name="instruments")
+app.add_typer(research_app, name="research")
 
 
 if __name__ == "__main__":

@@ -17,6 +17,13 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.research.models import (
+    BacktestEquityPoint,
+    BacktestTradeRecord,
+    ResearchBacktestResult,
+    ResearchRun,
+    ResearchStatus,
+)
 
 
 class StoragePort(Protocol):
@@ -64,6 +71,31 @@ class StoragePort(Protocol):
     def save_journal_entry(self, entry: TradeJournalEntry) -> None: ...
 
     def save_backtest_run(self, run: BacktestRun) -> None: ...
+
+    def save_research_run(self, run: ResearchRun) -> None: ...
+
+    def get_research_run(self, run_id: str) -> ResearchRun | None: ...
+
+    def list_research_runs(
+        self,
+        strategy_id: str | None = None,
+        canonical_symbol: str | None = None,
+        status: ResearchStatus | None = None,
+    ) -> list[ResearchRun]: ...
+
+    def save_research_backtest_result(self, result: ResearchBacktestResult) -> None: ...
+
+    def list_research_backtest_results(self, research_run_id: str) -> list[ResearchBacktestResult]: ...
+
+    def get_research_backtest_result(self, result_id: str) -> ResearchBacktestResult | None: ...
+
+    def save_backtest_equity_points(self, points: list[BacktestEquityPoint]) -> None: ...
+
+    def load_backtest_equity_points(self, backtest_run_id: str) -> list[BacktestEquityPoint]: ...
+
+    def save_backtest_trade_records(self, records: list[BacktestTradeRecord]) -> None: ...
+
+    def load_backtest_trade_records(self, backtest_run_id: str) -> list[BacktestTradeRecord]: ...
 
     def save_system_event(self, event: SystemEvent) -> None: ...
 

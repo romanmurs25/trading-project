@@ -90,10 +90,36 @@ trading backtest run-db \
 - сохраняет `BacktestRun`, если storage это поддерживает;
 - печатает JSON metrics.
 
+## Research workflow
+
+После загрузки instruments/candles можно запускать parameter sweep:
+
+```bash
+trading research run \
+  --strategy opening_range_breakout \
+  --canonical-symbol MOEX:SiH6 \
+  --interval 1m \
+  --from 2026-01-01 \
+  --to 2026-01-02 \
+  --param opening_range_minutes=5,15,30 \
+  --param take_profit_r_multiple=1.5,2,3
+```
+
+Отчёты:
+
+```bash
+trading research report --research-run-id <id> --format markdown
+trading research compare --research-run-id <id> --sort-by profit_factor
+```
+
+Research workflow использует сохранённые свечи из storage, проходит data-quality gate перед backtest и
+сохраняет research run, per-parameter results, equity curve и trade records.
+
 ## Known limitations
 
 - Реальный MOEX trading calendar пока не реализован.
 - Futures roll/expiry policy пока не реализована.
 - `run-db` принимает стратегию без CLI-параметров стратегии.
+- Research reports пока общие, не strategy-specific.
 - PostgreSQL-backed integration tests ещё не добавлены.
 - API endpoints пока используют in-memory storage по умолчанию.
