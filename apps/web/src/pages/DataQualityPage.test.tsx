@@ -14,7 +14,12 @@ describe("DataQualityPage", () => {
 
     renderRoute("/data-quality", <DataQualityPage />);
 
-    expect(await screen.findByText("missing intervals")).toBeInTheDocument();
+    expect(await screen.findByText("missing expected session candles: 2")).toBeInTheDocument();
+    expect(screen.getByText("Missing expected")).toBeInTheDocument();
+    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getByText("Out of session")).toBeInTheDocument();
+    expect(screen.getByText("Session counts")).toBeInTheDocument();
+    expect(screen.getByText("MAIN")).toBeInTheDocument();
     expect(screen.getByText("Expected")).toBeInTheDocument();
   });
 });

@@ -51,13 +51,19 @@ export interface CandleQualityReport {
   warnings: string[];
 }
 
+// Handwritten frontend API types must track backend response field names.
+// Cycle 8 should replace these with generated OpenAPI types.
 export interface SessionAwareCandleQualityReport {
   candles_count: number;
+  start?: string | null;
+  end?: string | null;
   expected_candles_count: number;
-  missing_intervals_count: number;
-  duplicate_timestamps_count: number;
-  out_of_session_count: number;
+  missing_expected_candles_count: number;
+  unexpected_out_of_session_count: number;
+  duplicates_count: number;
+  non_monotonic_count: number;
   zero_volume_count: number;
+  session_counts: Record<string, number>;
   warnings: string[];
 }
 

@@ -80,11 +80,25 @@ export function DataQualityPage() {
           <div className="metric-grid">
             <MetricCard label="Candles" value={data.candles_count} />
             <MetricCard label="Expected" value={data.expected_candles_count} />
-            <MetricCard label="Missing" value={data.missing_intervals_count} tone={data.missing_intervals_count ? "warning" : "success"} />
-            <MetricCard label="Duplicates" value={data.duplicate_timestamps_count} />
-            <MetricCard label="Out of session" value={data.out_of_session_count} />
+            <MetricCard
+              label="Missing expected"
+              value={data.missing_expected_candles_count}
+              tone={data.missing_expected_candles_count ? "warning" : "success"}
+            />
+            <MetricCard label="Duplicates" value={data.duplicates_count} />
+            <MetricCard label="Out of session" value={data.unexpected_out_of_session_count} />
+            <MetricCard label="Non-monotonic" value={data.non_monotonic_count} />
             <MetricCard label="Zero volume" value={data.zero_volume_count} />
           </div>
+          <Card title="Session counts">
+            <ul className="plain-list">
+              {Object.entries(data.session_counts).map(([sessionType, count]) => (
+                <li key={sessionType}>
+                  <span className="mono">{sessionType}</span>: {count}
+                </li>
+              ))}
+            </ul>
+          </Card>
           <Card title="Warnings">
             <ul className="plain-list">
               {(data.warnings.length ? data.warnings : ["no warnings"]).map((warning) => (

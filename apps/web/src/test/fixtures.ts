@@ -134,12 +134,16 @@ export const dataQualityReport: SessionAwareQualityResponse = {
   quality_mode: "session_aware",
   report: {
     candles_count: 10,
+    start: "2026-01-01T07:00:00Z",
+    end: "2026-01-01T18:45:00Z",
     expected_candles_count: 12,
-    missing_intervals_count: 2,
-    duplicate_timestamps_count: 0,
-    out_of_session_count: 0,
+    missing_expected_candles_count: 2,
+    unexpected_out_of_session_count: 0,
+    duplicates_count: 0,
+    non_monotonic_count: 0,
     zero_volume_count: 1,
-    warnings: ["missing intervals"],
+    session_counts: { MAIN: 10 },
+    warnings: ["missing expected session candles: 2"],
   },
 };
 

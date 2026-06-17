@@ -76,6 +76,11 @@ VITE_API_BASE_URL=http://localhost:8000
 Backend remains source of truth for all financial calculations. Frontend receives Decimal values as strings.
 Charts convert Decimal strings to JS `number` only for visualization.
 
+## API contract
+
+Frontend API types are handwritten in `apps/web/src/api/types.ts` and must match backend response field names.
+Cycle 8 should generate frontend types from the backend OpenAPI schema to reduce contract drift.
+
 ## Known limitations
 
 - Нет auth.
