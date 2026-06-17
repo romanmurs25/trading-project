@@ -241,6 +241,18 @@ class InMemoryStorage:
             None,
         )
 
+    def list_continuous_series(
+        self,
+        underlying_symbol: str | None = None,
+        interval: str | None = None,
+    ) -> list[ContinuousSeries]:
+        series = self.continuous_series
+        if underlying_symbol is not None:
+            series = [item for item in series if item.underlying_symbol == underlying_symbol]
+        if interval is not None:
+            series = [item for item in series if item.interval == interval]
+        return sorted(series, key=lambda item: (item.underlying_symbol, item.interval, item.start))
+
     def save_continuous_series_components(self, components: list[ContinuousSeriesComponent]) -> None:
         component_ids = {component.id for component in components}
         self.continuous_series_components = [

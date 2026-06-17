@@ -96,6 +96,28 @@ trading db init-placeholder
 pytest
 ruff check .
 mypy .
+npm --prefix apps/web run lint
+npm --prefix apps/web run typecheck
+npm --prefix apps/web run test -- --run
+npm --prefix apps/web run build
+```
+
+Frontend research dashboard:
+
+```bash
+npm --prefix apps/web install
+VITE_API_BASE_URL=http://localhost:8000 npm --prefix apps/web run dev
+```
+
+Доступные root-команды:
+
+```bash
+npm run web:install
+npm run web:dev
+npm run web:lint
+npm run web:typecheck
+npm run web:test
+npm run web:build
 ```
 
 Docker Compose:
@@ -104,8 +126,8 @@ Docker Compose:
 docker compose up
 ```
 
-Compose поднимает API, PostgreSQL и Redis. В первом MVP база данных ещё не является обязательной для
-работы safety spine, но сервис добавлен как будущая точка расширения.
+Compose поднимает API, frontend dashboard, PostgreSQL и Redis. В первом MVP база данных ещё не является
+обязательной для работы safety spine, но сервис добавлен как будущая точка расширения.
 
 ## Адаптеры
 
@@ -177,6 +199,16 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
   continuous futures build.
 - Research workflow получил опциональный `--session-aware-quality` и execution-cost flags.
 - Подробнее: [docs/moex_market_realism.md](docs/moex_market_realism.md).
+
+## Что добавлено в Cycle 7
+
+- Добавлен read-only frontend research dashboard в `apps/web` на Vite, React и TypeScript.
+- Dashboard общается с backend только через HTTP API и не импортирует Python packages.
+- Добавлены страницы instruments, data quality, sessions, futures chain, continuous series, research runs,
+  research run detail, reports и settings.
+- Добавлены read-only API endpoints для research equity/trades, continuous series/components и roll events.
+- CI расширен frontend-проверками: lint, typecheck, Vitest и build.
+- Подробнее: [docs/frontend_dashboard.md](docs/frontend_dashboard.md).
 
 ## Что не коммитить
 

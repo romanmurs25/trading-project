@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from storage.in_memory import InMemoryStorage
 
 from apps.api.routers import (
@@ -17,6 +18,16 @@ from apps.api.routers import (
 
 def create_app() -> FastAPI:
     application = FastAPI(title="Safety-first Trading Platform", version="0.1.0")
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
     application.state.storage = InMemoryStorage()
     application.include_router(health.router)
     application.include_router(instruments.router)

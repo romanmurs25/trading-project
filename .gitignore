@@ -8,6 +8,7 @@ coverage.xml
 htmlcov/
 *.egg-info/
 *.pyc
+*.tsbuildinfo
 .DS_Store
 __MACOSX/
 .idea/
@@ -16,6 +17,8 @@ __MACOSX/
 *.swo
 build/
 dist/
+node_modules/
+apps/web/node_modules/
 .env
 .env.*
 !.env.example

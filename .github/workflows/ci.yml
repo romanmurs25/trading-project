@@ -29,3 +29,30 @@ jobs:
 
       - name: Pytest
         run: pytest
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Frontend lint
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Frontend typecheck
+        working-directory: apps/web
+        run: npm run typecheck
+
+      - name: Frontend tests
+        working-directory: apps/web
+        run: npm run test -- --run
+
+      - name: Frontend build
+        working-directory: apps/web
+        run: npm run build

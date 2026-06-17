@@ -110,6 +110,40 @@ def compare_research_results(
     }
 
 
+@router.get("/runs/{run_id}/equity")
+def get_research_equity(run_id: str, request: Request) -> dict[str, object]:
+    _require_run(run_id, request)
+    storage = _storage(request)
+    points = [
+        point
+        for result in storage.list_research_backtest_results(run_id)
+        if result.backtest_run_id is not None
+        for point in storage.load_backtest_equity_points(result.backtest_run_id)
+    ]
+    points.sort(key=lambda point: (point.backtest_run_id, point.ts))
+    return {
+        "research_run_id": run_id,
+        "points": [_model_json(point) for point in points],
+    }
+
+
+@router.get("/runs/{run_id}/trades")
+def get_research_trades(run_id: str, request: Request) -> dict[str, object]:
+    _require_run(run_id, request)
+    storage = _storage(request)
+    trades = [
+        trade
+        for result in storage.list_research_backtest_results(run_id)
+        if result.backtest_run_id is not None
+        for trade in storage.load_backtest_trade_records(result.backtest_run_id)
+    ]
+    trades.sort(key=lambda trade: (trade.backtest_run_id, trade.entry_ts or datetime.min.replace(tzinfo=UTC)))
+    return {
+        "research_run_id": run_id,
+        "trades": [_model_json(trade) for trade in trades],
+    }
+
+
 def _storage(request: Request) -> StoragePort:
     if not hasattr(request.app.state, "storage"):
         request.app.state.storage = InMemoryStorage()
