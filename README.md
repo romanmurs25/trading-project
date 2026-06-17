@@ -70,7 +70,12 @@ trading config show-safe
 trading risk status
 trading risk kill
 trading backtest run-synthetic
+trading backtest run-db --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading instruments list --venue MOEX --asset-class FUTURES
+trading instruments get --canonical-symbol MOEX:SiH6
+trading data sync-moex-instruments
 trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
+trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
 trading db check-config
 trading db init-placeholder
 ```
@@ -128,6 +133,18 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 - Добавлены Alembic initial migration и sync `SQLAlchemyStorage` для базового persistence.
 - Добавлен GitHub Actions CI для `ruff check .`, `mypy .`, `pytest`.
 
+## Что добавлено в Cycle 4
+
+- Расширены `Instrument`/`ContractSpec` и storage repository для реестра инструментов и спецификаций.
+- Добавлена Alembic migration `20260617_0002_contract_specs`.
+- Реализован read-only MOEX ISS instruments sync для futures без внешних HTTP-вызовов в тестах.
+- Добавлены CLI/API для `instruments list/get` и безопасного `sync-moex-instruments`.
+- `backfill-moex` умеет работать по `--canonical-symbol` из storage.
+- Добавлен `backtest run-db` для запуска стратегии по сохранённым свечам через `PaperBroker`.
+- Добавлен strategy registry с `create_strategy`.
+- Добавлен отчёт качества свечей `trading data quality`.
+- Подробнее: [docs/moex_research_dataset.md](docs/moex_research_dataset.md).
+
 ## Что не коммитить
 
 - Виртуальные окружения: `.venv/`, локальные venv в корне проекта.
@@ -152,7 +169,7 @@ Compose поднимает API, PostgreSQL и Redis. В первом MVP баз�
 Пример ветки:
 
 ```bash
-git switch -c codex/cycle-03-moex-iss-storage
+git switch -c codex/cycle-04-moex-instruments-dataset
 ```
 
 ## Backtest limitations
@@ -169,5 +186,5 @@ MVP строит проверяемое ядро. Kafka, Java, Kubernetes и м�
 
 ## Следующий цикл
 
-Следующий рекомендуемый цикл: MOEX ISS read-only historical candles + DB persistence/backfill. План описан в
-[docs/next_cycle_moex_iss.md](docs/next_cycle_moex_iss.md).
+Следующий рекомендуемый цикл: DB-backed API endpoints, repository methods для orders/executions/backtest runs
+и первые интеграционные сценарии поверх PostgreSQL.

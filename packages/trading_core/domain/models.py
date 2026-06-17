@@ -112,6 +112,11 @@ class ContractSpec(DomainModel):
     tick_size: Decimal
     tick_value: Decimal
     currency: str
+    expiry_date: date | None = None
+    first_trade_date: date | None = None
+    last_trade_date: date | None = None
+    underlying_symbol: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class TradingSession(DomainModel):

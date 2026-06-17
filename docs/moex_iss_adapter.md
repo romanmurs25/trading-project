@@ -45,6 +45,25 @@ MOEX ISS обычно отдаёт naive datetime в timezone биржи. Mapper
 
 ## Commands
 
+Синхронизация futures instruments по умолчанию не делает внешний запрос:
+
+```bash
+trading data sync-moex-instruments
+```
+
+Read-only запрос к MOEX ISS instruments требует явного флага:
+
+```bash
+trading data sync-moex-instruments --asset-class futures --allow-network --write
+```
+
+Просмотр локального реестра:
+
+```bash
+trading instruments list --venue MOEX --asset-class FUTURES
+trading instruments get --canonical-symbol MOEX:SiH6
+```
+
 Dry-run без сети:
 
 ```bash
@@ -59,6 +78,18 @@ trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m -
 
 Сохранение требует `--write`.
 
+После синхронизации instruments можно использовать canonical symbol:
+
+```bash
+trading data backfill-moex --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --allow-network --write
+```
+
+Проверка качества локальных свечей:
+
+```bash
+trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+```
+
 ## Migrations
 
 ```bash
@@ -72,3 +103,4 @@ alembic upgrade head
 - Нет realtime stream.
 - Нет production-grade MOEX trading calendar.
 - Futures contract roll/expiry пока не решены.
+- Specs могут быть помечены `metadata.spec_incomplete=true`, если MOEX payload не содержит всех полей.

@@ -11,6 +11,9 @@ class Base(DeclarativeBase):
 
 class InstrumentRow(Base):
     __tablename__ = "instruments"
+    __table_args__ = (
+        Index("ix_instruments_venue_asset_class_native_symbol", "venue", "asset_class", "native_symbol"),
+    )
 
     id: Mapped[str] = mapped_column(String(128), primary_key=True)
     venue: Mapped[str] = mapped_column(String(32), index=True)
@@ -24,6 +27,26 @@ class InstrumentRow(Base):
     currency: Mapped[str] = mapped_column(String(16))
     expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class ContractSpecRow(Base):
+    __tablename__ = "contract_specs"
+    __table_args__ = (
+        UniqueConstraint("instrument_id", name="uq_contract_specs_instrument_id"),
+        Index("ix_contract_specs_instrument_id", "instrument_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    instrument_id: Mapped[str] = mapped_column(String(128))
+    lot_size: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    tick_size: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    tick_value: Mapped[Decimal] = mapped_column(Numeric(38, 18))
+    currency: Mapped[str] = mapped_column(String(16))
+    expiry_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    first_trade_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    last_trade_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    underlying_symbol: Mapped[str | None] = mapped_column(String(128), nullable=True)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
 
 

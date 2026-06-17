@@ -48,6 +48,24 @@ def test_sqlalchemy_storage_saves_and_loads_candles() -> None:
     assert loaded == [candle]
 
 
+def test_sqlalchemy_storage_load_candles_excludes_candle_exactly_at_end() -> None:
+    storage = make_storage()
+    start = datetime(2026, 1, 1, 7, 0, tzinfo=UTC)
+    first = make_candle()
+    at_end = first.model_copy(
+        update={
+            "ts_start": start + timedelta(minutes=1),
+            "ts_end": start + timedelta(minutes=2),
+            "close": Decimal("101"),
+        }
+    )
+
+    storage.save_candles([first, at_end])
+    loaded = storage.load_candles("moex-si", "1m", start, start + timedelta(minutes=1))
+
+    assert loaded == [first]
+
+
 def test_sqlalchemy_storage_upserts_duplicate_candle_without_duplicate_row() -> None:
     storage = make_storage()
     first = make_candle(close=Decimal("100.5"))

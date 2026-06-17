@@ -43,10 +43,23 @@ Candle -> Strategy -> Signal -> OrderIntent -> RiskEngine -> BacktestBrokerPort 
 ## Хранение
 
 Для execution flow доступен `InMemoryStorage`. В cycle 3 добавлены SQLAlchemy models, Alembic initial
-migration и sync `SQLAlchemyStorage`. Repository tests используют SQLite in-memory, а schema остаётся
-совместимой с PostgreSQL.
+migration и sync `SQLAlchemyStorage`. В cycle 4 storage расширен реестром `instruments`, `contract_specs`,
+поиском по `canonical_symbol` и загрузкой свечей для DB-backed backtest. Repository tests используют SQLite
+in-memory, а schema остаётся совместимой с PostgreSQL.
 
 ## MOEX ISS read-only market data
 
 `adapters.moex_iss` реализует только historical candles. Adapter не содержит execution methods и не требует
 credentials. CLI/API backfill по умолчанию dry-run и не делает внешний запрос без явного разрешения сети.
+
+## MOEX research dataset flow
+
+```text
+MOEX ISS securities payload -> Instrument/ContractSpec mapper -> StoragePort
+MOEX ISS candles payload -> Candle mapper -> StoragePort
+StoragePort -> backtest run-db -> PaperBroker + RiskEngine -> BacktestRun
+StoragePort -> data quality -> CandleQualityReport
+```
+
+MOEX инструменты сохраняются с `Venue.MOEX`, но `backtest run-db` запускает PAPER-копию инструмента и свечей.
+Это сохраняет безопасность RiskEngine: исторические MOEX-данные используются как dataset, а не как live venue.
