@@ -21,6 +21,10 @@ foundation, в четвёртом — реестр MOEX instruments/contract spe
 - `research_backtest_results`
 - `backtest_equity_points`
 - `backtest_trade_records`
+- `market_sessions`
+- `continuous_series`
+- `continuous_series_components`
+- `roll_events`
 - `audit_logs`
 - `system_events`
 
@@ -38,6 +42,10 @@ Decimal-значения описаны как `Numeric(38, 18)`. Временн
   `canonical_symbol`, `instrument_id`, `status`.
 - `backtest_equity_points`: index по `backtest_run_id`.
 - `backtest_trade_records`: indexes по `backtest_run_id`, `instrument_id`.
+- `market_sessions`: indexes по `venue`, `market`, `session_type`, `session_date`, `start`, `end`.
+- `continuous_series`: unique/index `canonical_symbol`, indexes по `venue`, `underlying_symbol`.
+- `continuous_series_components`: indexes по `continuous_series_id`, `instrument_id`, `canonical_symbol`.
+- `roll_events`: indexes по `venue`, `underlying_symbol`, `roll_date`.
 - `audit_logs`: index по `entity_type, entity_id, ts`.
 - `system_events`: index по `event_type, ts`.
 
@@ -51,6 +59,10 @@ Decimal-значения описаны как `Numeric(38, 18)`. Временн
 - `save_research_backtest_result`, `get_research_backtest_result`, `list_research_backtest_results`
 - `save_backtest_equity_points`, `load_backtest_equity_points`
 - `save_backtest_trade_records`, `load_backtest_trade_records`
+- `save_market_sessions`, `load_market_sessions`
+- `save_continuous_series`, `get_continuous_series`, `get_continuous_series_by_canonical_symbol`
+- `save_continuous_series_components`, `load_continuous_series_components`
+- `save_roll_events`, `load_roll_events`
 - базовые save-methods для signals, order intents, risk decisions, orders, executions, positions, events и
   backtest runs
 

@@ -244,6 +244,63 @@ class BacktestTradeRecordRow(Base):
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
 
 
+class MarketSessionRow(Base):
+    __tablename__ = "market_sessions"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    venue: Mapped[str] = mapped_column(String(32), index=True)
+    market: Mapped[str] = mapped_column(String(64), index=True)
+    session_type: Mapped[str] = mapped_column(String(32), index=True)
+    session_date: Mapped[date] = mapped_column(Date, index=True)
+    timezone: Mapped[str] = mapped_column(String(64))
+    start: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    end: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    is_trading: Mapped[bool]
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class ContinuousSeriesRow(Base):
+    __tablename__ = "continuous_series"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    venue: Mapped[str] = mapped_column(String(32), index=True)
+    underlying_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    canonical_symbol: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    interval: Mapped[str] = mapped_column(String(16))
+    roll_rule: Mapped[dict[str, object]] = mapped_column(JSON)
+    adjustment_method: Mapped[str] = mapped_column(String(32))
+    start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class ContinuousSeriesComponentRow(Base):
+    __tablename__ = "continuous_series_components"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    continuous_series_id: Mapped[str] = mapped_column(String(128), index=True)
+    instrument_id: Mapped[str] = mapped_column(String(128), index=True)
+    canonical_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    roll_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
+class RollEventRow(Base):
+    __tablename__ = "roll_events"
+
+    id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    venue: Mapped[str] = mapped_column(String(32), index=True)
+    underlying_symbol: Mapped[str] = mapped_column(String(128), index=True)
+    from_instrument_id: Mapped[str] = mapped_column(String(128))
+    to_instrument_id: Mapped[str] = mapped_column(String(128))
+    roll_date: Mapped[date] = mapped_column(Date, index=True)
+    reason: Mapped[str] = mapped_column(String(512))
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSON, default=dict)
+
+
 class AuditLogRow(Base):
     __tablename__ = "audit_logs"
     __table_args__ = (Index("ix_audit_logs_entity_ts", "entity_type", "entity_id", "ts"),)

@@ -30,8 +30,14 @@ trading data sync-moex-instruments
 trading data backfill-moex --symbol SiH6 --instrument-id moex-si --interval 1m --from 2026-01-01 --to 2026-01-02
 trading data backfill-moex --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
 trading data quality --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading data quality-session-aware --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
+trading market sessions --from 2026-01-05 --to 2026-01-06 --write
+trading futures chain --underlying Si
+trading futures select-front --underlying Si --as-of 2026-03-16
+trading data build-continuous --underlying Si --interval 1m --from 2026-03-13 --to 2026-03-17 --write
 trading backtest run-db --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02
 trading research run --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --param opening_range_minutes=5,15
+trading research run --strategy opening_range_breakout --canonical-symbol MOEX:SiH6 --interval 1m --from 2026-01-01 --to 2026-01-02 --session-aware-quality
 trading research report --research-run-id <id> --format json
 trading research compare --research-run-id <id> --sort-by profit_factor
 trading research walk-forward-splits --from 2026-01-01 --to 2026-06-01 --train-days 60 --test-days 20 --step-days 20
@@ -67,6 +73,10 @@ SQLite in-memory; production PostgreSQL schema должна оставаться
 - `ResearchRunner` принимает `broker_factory`; `trading_core` не должен импортировать `adapters.paper`.
 - Research workflow использует только сохранённые candles из storage и не делает external HTTP.
 - Data-quality gate должен выполняться до parameter sweep/backtest execution.
+- MOEX session templates являются configurable MVP defaults, а не официальным production calendar.
+- Session-aware quality должен использовать только сохранённые candles и локальные templates.
+- Continuous futures MVP не делает price adjustment и не должен использовать live/streaming data.
+- Roll rules MVP основаны на expiry/last_trade_date; liquidity/open-interest roll пока не реализован.
 - Kafka и Java не используются в MVP.
 - Kubernetes не используется в MVP.
 - Тесты не требуют реальных credentials и не отправляют live-ордера.

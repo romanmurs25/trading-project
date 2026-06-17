@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, select
@@ -20,6 +20,9 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
+from trading_core.market.roll import RollEvent
+from trading_core.market.sessions import MarketSession, SessionType
 from trading_core.research.models import (
     BacktestEquityPoint,
     BacktestTradeRecord,
@@ -34,15 +37,19 @@ from storage.sqlalchemy_models import (
     BacktestRunRow,
     BacktestTradeRecordRow,
     CandleRow,
+    ContinuousSeriesComponentRow,
+    ContinuousSeriesRow,
     ContractSpecRow,
     ExecutionRow,
     InstrumentRow,
+    MarketSessionRow,
     OrderIntentRow,
     OrderRow,
     PositionRow,
     ResearchBacktestResultRow,
     ResearchRunRow,
     RiskDecisionRow,
+    RollEventRow,
     SignalRow,
     SystemEventRow,
 )
@@ -372,6 +379,88 @@ class SQLAlchemyStorage:
         with self.session_factory() as session:
             return [_backtest_trade_record_from_row(row) for row in session.scalars(statement).all()]
 
+    def save_market_sessions(self, sessions: list[MarketSession]) -> None:
+        with self.session_factory.begin() as session:
+            for market_session in sessions:
+                session.merge(_market_session_row(market_session))
+
+    def load_market_sessions(
+        self,
+        venue: Venue | None = None,
+        market: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[MarketSession]:
+        statement = select(MarketSessionRow)
+        if venue is not None:
+            statement = statement.where(MarketSessionRow.venue == venue.value)
+        if market is not None:
+            statement = statement.where(MarketSessionRow.market == market)
+        if start is not None:
+            statement = statement.where(MarketSessionRow.end > start)
+        if end is not None:
+            statement = statement.where(MarketSessionRow.start < end)
+        statement = statement.order_by(MarketSessionRow.start)
+        with self.session_factory() as session:
+            return [_market_session_from_row(row) for row in session.scalars(statement).all()]
+
+    def save_continuous_series(self, series: ContinuousSeries) -> None:
+        with self.session_factory.begin() as session:
+            session.merge(_continuous_series_row(series))
+
+    def get_continuous_series(self, series_id: str) -> ContinuousSeries | None:
+        with self.session_factory() as session:
+            row = session.scalar(select(ContinuousSeriesRow).where(ContinuousSeriesRow.id == series_id))
+            return _continuous_series_from_row(row) if row is not None else None
+
+    def get_continuous_series_by_canonical_symbol(self, canonical_symbol: str) -> ContinuousSeries | None:
+        with self.session_factory() as session:
+            row = session.scalar(
+                select(ContinuousSeriesRow).where(
+                    ContinuousSeriesRow.canonical_symbol == canonical_symbol
+                )
+            )
+            return _continuous_series_from_row(row) if row is not None else None
+
+    def save_continuous_series_components(self, components: list[ContinuousSeriesComponent]) -> None:
+        with self.session_factory.begin() as session:
+            for component in components:
+                session.merge(_continuous_series_component_row(component))
+
+    def load_continuous_series_components(self, series_id: str) -> list[ContinuousSeriesComponent]:
+        statement = (
+            select(ContinuousSeriesComponentRow)
+            .where(ContinuousSeriesComponentRow.continuous_series_id == series_id)
+            .order_by(ContinuousSeriesComponentRow.start)
+        )
+        with self.session_factory() as session:
+            return [
+                _continuous_series_component_from_row(row)
+                for row in session.scalars(statement).all()
+            ]
+
+    def save_roll_events(self, events: list[RollEvent]) -> None:
+        with self.session_factory.begin() as session:
+            for event in events:
+                session.merge(_roll_event_row(event))
+
+    def load_roll_events(
+        self,
+        underlying_symbol: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[RollEvent]:
+        statement = select(RollEventRow)
+        if underlying_symbol is not None:
+            statement = statement.where(RollEventRow.underlying_symbol == underlying_symbol)
+        if start_date is not None:
+            statement = statement.where(RollEventRow.roll_date >= start_date)
+        if end_date is not None:
+            statement = statement.where(RollEventRow.roll_date < end_date)
+        statement = statement.order_by(RollEventRow.roll_date)
+        with self.session_factory() as session:
+            return [_roll_event_from_row(row) for row in session.scalars(statement).all()]
+
     def save_system_event(self, event: SystemEvent) -> None:
         with self.session_factory.begin() as session:
             session.merge(
@@ -626,6 +715,124 @@ def _backtest_trade_record_from_row(row: BacktestTradeRecordRow) -> BacktestTrad
         gross_pnl=row.gross_pnl,
         net_pnl=row.net_pnl,
         r_multiple=row.r_multiple,
+        reason=row.reason,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _market_session_row(session: MarketSession) -> MarketSessionRow:
+    payload = session.model_dump(mode="json")
+    return MarketSessionRow(
+        id=session.id,
+        venue=session.venue.value,
+        market=session.market,
+        session_type=session.session_type.value,
+        session_date=session.session_date,
+        timezone=session.timezone,
+        start=session.start,
+        end=session.end,
+        is_trading=session.is_trading,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _market_session_from_row(row: MarketSessionRow) -> MarketSession:
+    return MarketSession(
+        id=row.id,
+        venue=Venue(row.venue),
+        market=row.market,
+        session_type=SessionType(row.session_type),
+        session_date=row.session_date,
+        timezone=row.timezone,
+        start=_aware(row.start),
+        end=_aware(row.end),
+        is_trading=row.is_trading,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _continuous_series_row(series: ContinuousSeries) -> ContinuousSeriesRow:
+    payload = series.model_dump(mode="json")
+    return ContinuousSeriesRow(
+        id=series.id,
+        venue=series.venue,
+        underlying_symbol=series.underlying_symbol,
+        canonical_symbol=series.canonical_symbol,
+        interval=series.interval,
+        roll_rule=payload["roll_rule"],
+        adjustment_method=series.adjustment_method,
+        start=series.start,
+        end=series.end,
+        created_at=series.created_at,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _continuous_series_from_row(row: ContinuousSeriesRow) -> ContinuousSeries:
+    return ContinuousSeries(
+        id=row.id,
+        venue=row.venue,
+        underlying_symbol=row.underlying_symbol,
+        canonical_symbol=row.canonical_symbol,
+        interval=row.interval,
+        roll_rule=dict(row.roll_rule or {}),
+        adjustment_method=row.adjustment_method,
+        start=_aware(row.start),
+        end=_aware(row.end),
+        created_at=_aware(row.created_at),
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _continuous_series_component_row(component: ContinuousSeriesComponent) -> ContinuousSeriesComponentRow:
+    payload = component.model_dump(mode="json")
+    return ContinuousSeriesComponentRow(
+        id=component.id,
+        continuous_series_id=component.continuous_series_id,
+        instrument_id=component.instrument_id,
+        canonical_symbol=component.canonical_symbol,
+        start=component.start,
+        end=component.end,
+        roll_date=component.roll_date,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _continuous_series_component_from_row(row: ContinuousSeriesComponentRow) -> ContinuousSeriesComponent:
+    return ContinuousSeriesComponent(
+        id=row.id,
+        continuous_series_id=row.continuous_series_id,
+        instrument_id=row.instrument_id,
+        canonical_symbol=row.canonical_symbol,
+        start=_aware(row.start),
+        end=_aware(row.end),
+        roll_date=row.roll_date,
+        metadata=dict(row.metadata_json or {}),
+    )
+
+
+def _roll_event_row(event: RollEvent) -> RollEventRow:
+    payload = event.model_dump(mode="json")
+    return RollEventRow(
+        id=event.id,
+        venue=event.venue,
+        underlying_symbol=event.underlying_symbol,
+        from_instrument_id=event.from_instrument_id,
+        to_instrument_id=event.to_instrument_id,
+        roll_date=event.roll_date,
+        reason=event.reason,
+        metadata_json=payload["metadata"],
+    )
+
+
+def _roll_event_from_row(row: RollEventRow) -> RollEvent:
+    return RollEvent(
+        id=row.id,
+        venue=row.venue,
+        underlying_symbol=row.underlying_symbol,
+        from_instrument_id=row.from_instrument_id,
+        to_instrument_id=row.to_instrument_id,
+        roll_date=row.roll_date,
         reason=row.reason,
         metadata=dict(row.metadata_json or {}),
     )

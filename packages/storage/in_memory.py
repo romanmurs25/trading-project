@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import date, datetime
 
 from trading_core.domain.enums import AssetClass, Venue
 from trading_core.domain.models import (
@@ -17,6 +17,9 @@ from trading_core.domain.models import (
     SystemEvent,
     TradeJournalEntry,
 )
+from trading_core.market.continuous import ContinuousSeries, ContinuousSeriesComponent
+from trading_core.market.roll import RollEvent
+from trading_core.market.sessions import MarketSession
 from trading_core.research.models import (
     BacktestEquityPoint,
     BacktestTradeRecord,
@@ -43,6 +46,10 @@ class InMemoryStorage:
     research_backtest_results: list[ResearchBacktestResult] = field(default_factory=list)
     backtest_equity_points: list[BacktestEquityPoint] = field(default_factory=list)
     backtest_trade_records: list[BacktestTradeRecord] = field(default_factory=list)
+    market_sessions: list[MarketSession] = field(default_factory=list)
+    continuous_series: list[ContinuousSeries] = field(default_factory=list)
+    continuous_series_components: list[ContinuousSeriesComponent] = field(default_factory=list)
+    roll_events: list[RollEvent] = field(default_factory=list)
     system_events: list[SystemEvent] = field(default_factory=list)
     audit_logs: list[AuditLog] = field(default_factory=list)
 
@@ -193,6 +200,83 @@ class InMemoryStorage:
         return [
             record for record in self.backtest_trade_records if record.backtest_run_id == backtest_run_id
         ]
+
+    def save_market_sessions(self, sessions: list[MarketSession]) -> None:
+        session_ids = {session.id for session in sessions}
+        self.market_sessions = [session for session in self.market_sessions if session.id not in session_ids]
+        self.market_sessions.extend(sessions)
+
+    def load_market_sessions(
+        self,
+        venue: Venue | None = None,
+        market: str | None = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[MarketSession]:
+        sessions = self.market_sessions
+        if venue is not None:
+            sessions = [session for session in sessions if session.venue == venue]
+        if market is not None:
+            sessions = [session for session in sessions if session.market == market]
+        if start is not None:
+            sessions = [session for session in sessions if session.end > start]
+        if end is not None:
+            sessions = [session for session in sessions if session.start < end]
+        return sorted(sessions, key=lambda session: session.start)
+
+    def save_continuous_series(self, series: ContinuousSeries) -> None:
+        self.continuous_series = [
+            existing
+            for existing in self.continuous_series
+            if existing.id != series.id and existing.canonical_symbol != series.canonical_symbol
+        ]
+        self.continuous_series.append(series)
+
+    def get_continuous_series(self, series_id: str) -> ContinuousSeries | None:
+        return next((series for series in self.continuous_series if series.id == series_id), None)
+
+    def get_continuous_series_by_canonical_symbol(self, canonical_symbol: str) -> ContinuousSeries | None:
+        return next(
+            (series for series in self.continuous_series if series.canonical_symbol == canonical_symbol),
+            None,
+        )
+
+    def save_continuous_series_components(self, components: list[ContinuousSeriesComponent]) -> None:
+        component_ids = {component.id for component in components}
+        self.continuous_series_components = [
+            component for component in self.continuous_series_components if component.id not in component_ids
+        ]
+        self.continuous_series_components.extend(components)
+
+    def load_continuous_series_components(self, series_id: str) -> list[ContinuousSeriesComponent]:
+        return sorted(
+            (
+                component
+                for component in self.continuous_series_components
+                if component.continuous_series_id == series_id
+            ),
+            key=lambda component: component.start,
+        )
+
+    def save_roll_events(self, events: list[RollEvent]) -> None:
+        event_ids = {event.id for event in events}
+        self.roll_events = [event for event in self.roll_events if event.id not in event_ids]
+        self.roll_events.extend(events)
+
+    def load_roll_events(
+        self,
+        underlying_symbol: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[RollEvent]:
+        events = self.roll_events
+        if underlying_symbol is not None:
+            events = [event for event in events if event.underlying_symbol == underlying_symbol]
+        if start_date is not None:
+            events = [event for event in events if event.roll_date >= start_date]
+        if end_date is not None:
+            events = [event for event in events if event.roll_date < end_date]
+        return sorted(events, key=lambda event: event.roll_date)
 
     def save_system_event(self, event: SystemEvent) -> None:
         self.system_events.append(event)
